@@ -17,6 +17,16 @@ cp .env.example .env          # optional — the stack runs without credentials
 docker compose up --build
 ```
 
+> **The build needs a working link.** Roughly 40 MB of wheels are fetched on
+> first build (more with `EXTRAS=ml`). `PIP_RETRIES`/`PIP_TIMEOUT` are set
+> generously in the Dockerfile because the deployments this platform targets
+> live on links that drop mid-download, but a link that cannot complete a
+> 3 MB wheel at all will surface as `ResolutionImpossible` rather than as a
+> network error — pip walks back through every candidate version before giving
+> up. If you see that, the fix is a mirror or a pre-pulled base image, not a
+> dependency pin. Build once somewhere with bandwidth and
+> `docker save`/`docker load` the result onto the district machine.
+
 - API: <http://localhost:8000/docs>
 - Dashboard: <http://localhost:8501>
 
