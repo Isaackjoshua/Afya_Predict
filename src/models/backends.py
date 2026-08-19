@@ -260,3 +260,49 @@ def backend_report() -> Dict[str, Any]:
         "statsmodels": HAS_STATSMODELS,
         "default_resolved": resolve_backend("xgboost"),
     }
+
+
+def fit_with_optional_weights(estimator, X, y, sample_weight=None):
+    """Fit an estimator, passing `sample_weight` only if it is actually accepted.
+
+    Backends disagree about this in ways that are easy to get wrong: XGBoost and
+    LightGBM take `sample_weight`, a scikit-learn `Pipeline` raises `ValueError`
+    ("Pipeline.fit does not accept the sample_weight parameter") rather than
+    `TypeError`, and the bundled NumPy GBM takes it positionally. Catching only
+    `TypeError` silently dropped a whole ensemble member.
+
+    Returns `True` when the weights were used, `False` when the fit fell back to
+    unweighted — the caller can then report that quality weighting was not applied.
+    """
+    if sample_weight is None:
+        estimator.fit(X, y)
+        return False
+    try:
+        estimator.fit(X, y, sample_weight=sample_weight)
+        return True
+    except (TypeError, ValueError) as exc:
+        if "sample_weight" not in str(exc):
+            raise
+        log.debug("%s does not accept sample_weight; fitting unweighted", type(estimator).__name__)
+        estimator.fit(X, y)
+        return False
+
+
+def usable_feature_mask(X: "np.ndarray") -> "np.ndarray":
+    """Columns worth fitting on: at least two distinct finite values.
+
+    All-NaN or constant columns carry no information, and they break some
+    backends outright — scikit-learn's histogram binner raises
+    "window shape cannot be larger than input array shape" on them. Dropping
+    them is correct regardless of backend, so it happens before the fit rather
+    than being patched per backend.
+    """
+    X = np.asarray(X, dtype=float)
+    finite = np.isfinite(X)
+    keep = np.zeros(X.shape[1], dtype=bool)
+    for j in range(X.shape[1]):
+        column = X[finite[:, j], j]
+        if column.size < 2:
+            continue
+        keep[j] = np.unique(column).size >= 2
+    return keep

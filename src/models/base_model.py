@@ -40,7 +40,13 @@ from src.core.types import (
 )
 from src.data_ingestion.normalizer import Panel
 from src.feature_engineering.builder import FeatureBuilder, FeatureMatrix
-from src.models.backends import BackendInfo, build_regressor, feature_importances
+from src.models.backends import (
+    BackendInfo,
+    build_regressor,
+    feature_importances,
+    fit_with_optional_weights,
+    usable_feature_mask,
+)
 
 log = get_logger("models.base")
 
@@ -179,7 +185,22 @@ class BaseDiseaseModule(abc.ABC):
             self.log.warning("scope %s has only %d usable rows; skipped", scope, len(usable.X))
             return None
 
-        X = usable.X.to_numpy(dtype=float)
+        # Drop columns that carry no signal in this training window (all-NaN or
+        # constant). They cannot help the fit, and some backends fail outright
+        # on them rather than ignoring them.
+        full_matrix = usable.X.to_numpy(dtype=float)
+        keep = usable_feature_mask(full_matrix)
+        if not keep.any():
+            self.log.warning("scope %s has no usable features; skipped", scope)
+            return None
+        dropped = int((~keep).sum())
+        if dropped:
+            self.log.debug(
+                "scope %s: dropped %d constant/empty feature(s) of %d",
+                scope, dropped, len(keep),
+            )
+        feature_names = [c for c, k in zip(usable.X.columns, keep) if k]
+        X = full_matrix[:, keep]
         y = usable.y.to_numpy(dtype=float)
         weights = None
         if usable.row_quality is not None:
@@ -198,10 +219,7 @@ class BaseDiseaseModule(abc.ABC):
         estimator, backend = build_regressor(
             backend_choice, random_state=self.settings.random_seed
         )
-        try:
-            estimator.fit(X, y, sample_weight=weights)
-        except TypeError:  # backend does not accept sample_weight
-            estimator.fit(X, y)
+        fit_with_optional_weights(estimator, X, y, weights)
 
         fitted = np.asarray(estimator.predict(X), dtype=float)
         if residuals is None:
@@ -213,7 +231,7 @@ class BaseDiseaseModule(abc.ABC):
         return TrainedModel(
             estimator=estimator,
             backend=backend,
-            feature_names=list(usable.X.columns),
+            feature_names=feature_names,
             scope=scope,
             n_rows=len(usable.X),
             train_weeks=(weeks[0], weeks[-1]) if weeks else ("", ""),
@@ -248,13 +266,10 @@ class BaseDiseaseModule(abc.ABC):
 
         estimator, _ = build_regressor(backend_choice, random_state=self.settings.random_seed)
         try:
-            try:
-                estimator.fit(
-                    X[train_mask], y[train_mask],
-                    sample_weight=None if weights is None else weights[train_mask],
-                )
-            except TypeError:
-                estimator.fit(X[train_mask], y[train_mask])
+            fit_with_optional_weights(
+                estimator, X[train_mask], y[train_mask],
+                None if weights is None else weights[train_mask],
+            )
         except Exception as exc:  # noqa: BLE001 - fall back rather than fail training
             self.log.warning("holdout residual fit failed (%s); using inflated in-sample", exc)
             return None

@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from src.core.logging import get_logger
-from src.models.backends import build_regressor
+from src.models.backends import build_regressor, fit_with_optional_weights, usable_feature_mask
 
 log = get_logger("models.ensemble")
 
@@ -68,8 +68,14 @@ class WeightedEnsemble:
         The split is chronological, never random: shuffling a time series
         leaks the future into the validation set and inflates every weight.
         """
-        self.feature_names = list(X.columns)
-        matrix = X.to_numpy(dtype=float)
+        # Same guard as the single-model path: a constant column helps nobody and
+        # breaks some backends.
+        raw = X.to_numpy(dtype=float)
+        keep = usable_feature_mask(raw)
+        if not keep.any():
+            raise ValueError("no usable features: every column is constant or empty")
+        self.feature_names = [c for c, k in zip(X.columns, keep) if k]
+        matrix = raw[:, keep]
         target = np.asarray(y, dtype=float)
 
         split = self._split_point(len(target))
@@ -81,10 +87,7 @@ class WeightedEnsemble:
         for name in self.member_names:
             estimator, backend = build_regressor(name, random_state=self.random_state)
             try:
-                try:
-                    estimator.fit(X_train, y_train, sample_weight=weights_train)
-                except TypeError:
-                    estimator.fit(X_train, y_train)
+                fit_with_optional_weights(estimator, X_train, y_train, weights_train)
             except Exception as exc:  # noqa: BLE001 - one member failing is survivable
                 log.warning("ensemble member %s failed to fit: %s", name, exc)
                 continue
@@ -135,18 +138,24 @@ class WeightedEnsemble:
 
     # -- prediction --------------------------------------------------------
     def predict(self, X) -> np.ndarray:
-        matrix = X.to_numpy(dtype=float) if isinstance(X, pd.DataFrame) else np.asarray(X, dtype=float)
+        matrix = self._align(X)
         stacked = np.vstack([member.predict(matrix) for member in self.members])
         weights = np.array([member.weight for member in self.members], dtype=float)
         return np.average(stacked, axis=0, weights=weights)
 
     def predict_members(self, X) -> pd.DataFrame:
         """Per-member predictions — the ensemble's own disagreement diagnostic."""
-        matrix = X.to_numpy(dtype=float) if isinstance(X, pd.DataFrame) else np.asarray(X, dtype=float)
+        matrix = self._align(X)
         index = X.index if isinstance(X, pd.DataFrame) else None
         return pd.DataFrame(
             {member.name: member.predict(matrix) for member in self.members}, index=index
         )
+
+    def _align(self, X) -> np.ndarray:
+        """Restrict incoming rows to the features the ensemble was fitted on."""
+        if isinstance(X, pd.DataFrame):
+            return X.reindex(columns=self.feature_names).to_numpy(dtype=float)
+        return np.asarray(X, dtype=float)
 
     def prediction_spread(self, X) -> np.ndarray:
         """Weighted standard deviation across members.
