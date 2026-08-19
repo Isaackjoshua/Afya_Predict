@@ -72,8 +72,26 @@ addopts = "-q"
 filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning"]
 
 [tool.coverage.run]
-source = ["src", "offline"]
-omit = ["*/__init__.py", "*/adapters/search_trends.py"]
+source = ["src", "offline", "config"]
+omit = [
+  "*/__init__.py",
+  # Requires the optional GDAL/rasterio stack, which is deliberately not a
+  # runtime dependency; the live raster paths are exercised only when the `geo`
+  # extra is installed.
+  "src/data_ingestion/raster_utils.py",
+  # A commented scaffold, copied by scripts/add_new_disease.py.
+  "src/models/disease_modules/_template_module.py",
+]
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "@(abc\\.)?abstractmethod",
+  "if __name__ == .__main__.:",
+  "def main\\(",
+  "pragma: no cover",
+]
 
 [tool.ruff]
 line-length = 100
