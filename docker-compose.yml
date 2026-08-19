@@ -1,0 +1,153 @@
+# AFYA-PREDICT full stack.
+#
+#   cp .env.example .env      # optional: credentials, DB password
+#   docker compose up --build
+#
+#   API        http://localhost:8000/docs
+#   Dashboard  http://localhost:8501
+#
+# The stack comes up and works with no credentials at all: every adapter falls
+# back to cached or synthetic data, and the API reports that honestly at
+# /health and /data/status.
+#
+# `db` and `redis` are optional. A single district node can run just `api` and
+# `dashboard` against the bundled SQLite store:
+#     docker compose up api dashboard
+
+name: afya-predict
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: afya-predict:latest
+  restart: unless-stopped
+  env_file:
+    - path: .env
+      required: false
+  environment: &app-env
+    APP_ENV: ${APP_ENV:-production}
+    LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    DEFAULT_REGION: ${DEFAULT_REGION:-tanzania}
+    DATA_DIR: /app/data
+    ARTIFACT_DIR: /app/artifacts
+    # Leave DATABASE_URL empty to use the bundled SQLite store instead of Postgres.
+    DATABASE_URL: ${DATABASE_URL:-}
+    REDIS_URL: ${REDIS_URL:-}
+    DHIS2_BASE_URL: ${DHIS2_BASE_URL:-}
+    DHIS2_USERNAME: ${DHIS2_USERNAME:-}
+    DHIS2_PASSWORD: ${DHIS2_PASSWORD:-}
+    CDS_API_KEY: ${CDS_API_KEY:-}
+    EARTHDATA_USERNAME: ${EARTHDATA_USERNAME:-}
+    EARTHDATA_PASSWORD: ${EARTHDATA_PASSWORD:-}
+    CDSE_CLIENT_ID: ${CDSE_CLIENT_ID:-}
+    CDSE_CLIENT_SECRET: ${CDSE_CLIENT_SECRET:-}
+    API_KEY: ${API_KEY:-}
+  volumes:
+    - afya-data:/app/data
+    - afya-artifacts:/app/artifacts
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-afya_predict}
+      POSTGRES_USER: ${DB_USER:-afya}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me-before-deploying}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-afya} -d ${DB_NAME:-afya_predict}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["full"]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redisdata:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["full"]
+
+  api:
+    <<: *app
+    command:
+      - uvicorn
+      - src.api.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --workers
+      - "${API_WORKERS:-2}"
+    ports:
+      - "${API_PORT:-8000}:8000"
+
+  dashboard:
+    <<: *app
+    command:
+      - streamlit
+      - run
+      - dashboard/app.py
+      - --server.port
+      - "8501"
+      - --server.address
+      - "0.0.0.0"
+      - --server.headless
+      - "true"
+      - --browser.gatherUsageStats
+      - "false"
+    environment:
+      <<: *app-env
+      API_URL: http://api:8000
+    ports:
+      - "${DASHBOARD_PORT:-8501}:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  scheduler:
+    <<: *app
+    command: ["python", "-m", "src.data_ingestion.scheduler"]
+    healthcheck:
+      disable: true
+
+  # One-shot: populate a fresh volume with history, models and forecasts.
+  #   docker compose run --rm seed
+  seed:
+    <<: *app
+    command: ["python", "scripts/seed_historical_data.py"]
+    restart: "no"
+    profiles: ["tools"]
+
+  # One-shot: walk-forward backtest against the acceptance criteria.
+  #   docker compose run --rm backtest
+  backtest:
+    <<: *app
+    command: ["python", "scripts/run_backtest.py", "--all"]
+    restart: "no"
+    profiles: ["tools"]
+
+volumes:
+  afya-data:
+  afya-artifacts:
+  pgdata:
+  redisdata:

@@ -56,6 +56,16 @@ Repository = "https://github.com/Isaackjoshua/Afya_Predict"
 [tool.setuptools.packages.find]
 include = ["src*", "config*", "dashboard*", "offline*"]
 
+# The disease and region YAMLs are data, not code, but the platform is useless
+# without them: `config.settings` resolves DISEASE_CONFIG_DIR relative to the
+# installed package. Without this, `pip install afya-predict` yields an import
+# that works and a registry that finds no diseases.
+[tool.setuptools.package-data]
+config = ["diseases/*.yaml", "regions/*.yaml", "alert_rules/*.yaml"]
+
+[tool.setuptools]
+include-package-data = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

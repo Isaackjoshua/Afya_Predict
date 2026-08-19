@@ -1,0 +1,10 @@
+# Source-distribution contents. The wheel gets the YAML configs through
+# [tool.setuptools.package-data]; this covers the sdist and the files a
+# contributor needs to reproduce a build.
+include README.md LICENSE .env.example
+recursive-include config *.yaml
+recursive-include docs *.md
+include notebooks/README.md
+recursive-exclude data *
+recursive-exclude artifacts *
+exclude AFYA_PREDICT_Claude_Code_Prompt.md
