@@ -51,18 +51,27 @@ API_URL=http://localhost:8000 streamlit run dashboard/app.py &
 python -m src.data_ingestion.scheduler &
 ```
 
-### Minimum viable install
+### Install size and the `ml` extra
 
-XGBoost, LightGBM, SHAP and scikit-learn are all optional. Without them the
-platform uses its bundled NumPy gradient booster and exact TreeSHAP:
+The **core install is deliberately light** — no XGBoost, LightGBM, SHAP or
+scikit-learn. Those are all optional, because the platform ships working
+fallbacks: a NumPy histogram gradient booster, exact TreeSHAP, and a
+seasonal-naive stand-in for SARIMA.
 
 ```bash
-pip install numpy pandas scipy pydantic pydantic-settings PyYAML \
-            fastapi "uvicorn[standard]" requests APScheduler
+pip install -e .                    # ~40 MB of wheels, works everywhere
+pip install -e ".[ml]"              # + faster backends and reference SHAP
+pip install -e ".[ml,dashboard]"    # + Streamlit and Plotly
 ```
 
-Training is slower; the outputs are the same shape. CI runs this configuration
-on every push precisely so it keeps working.
+`shap` alone pulls numba and llvmlite, roughly 60 MB of transitive
+dependencies. A district node on an intermittent link should not have to fetch
+that to produce a forecast, so it does not.
+
+Training is slower without the extra; the outputs are the same shape, and the
+platform picks up the faster backends automatically once they are installed
+(`GET /health` reports which one resolved). CI runs **both** configurations on
+every push precisely so the light path keeps working.
 
 ## Configuration
 

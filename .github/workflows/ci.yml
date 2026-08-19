@@ -38,16 +38,14 @@ jobs:
         if: matrix.deps == 'full'
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev,dashboard]"
-          pip install xgboost lightgbm shap statsmodels
+          pip install -e ".[ml,dev,dashboard]"
 
       - name: Install (minimal - no ML wheels)
         if: matrix.deps == 'minimal'
         run: |
           python -m pip install --upgrade pip
-          pip install numpy pandas scipy pydantic pydantic-settings PyYAML \
-                      fastapi "uvicorn[standard]" requests APScheduler \
-                      pytest pytest-cov httpx
+          pip install -e .          # core only: no ML wheels at all
+          pip install pytest pytest-cov httpx
 
       - name: Report the resolved backend
         run: |
@@ -183,7 +181,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -e ".[dev]" && pip install xgboost lightgbm statsmodels
+      - run: pip install -e ".[ml,dev]"
       # Critical rule #10: a model that cannot beat all three naive baselines is
       # not fit for deployment. run_backtest.py exits non-zero when that happens.
       - name: Walk-forward backtest

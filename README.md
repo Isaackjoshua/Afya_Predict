@@ -53,7 +53,7 @@ Or without Docker:
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dashboard]"
+pip install -e ".[ml,dashboard]"   # drop "ml," for a light install
 python scripts/setup_database.py
 python scripts/seed_historical_data.py
 uvicorn src.api.main:app --port 8000
@@ -133,7 +133,7 @@ The core pipeline does not change. See [docs/adding_diseases.md](docs/adding_dis
 ## Validation
 
 ```bash
-pytest                                     # ~260 tests
+pytest                                     # 249 test functions
 python scripts/check_acceptance.py --full  # all 15 acceptance criteria
 python scripts/run_backtest.py --all       # walk-forward, against the baseline gate
 ```

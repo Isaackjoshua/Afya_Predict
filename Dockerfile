@@ -34,10 +34,15 @@ WORKDIR /app
 # second installs the real code without re-resolving. Installing the project in
 # the first pass instead would silently ship a package missing config/, dashboard/
 # and offline/, which only shows up at runtime.
+# EXTRAS controls how heavy the image is. The default keeps it light and
+# buildable on a poor link; `--build-arg EXTRAS=ml,dashboard` adds XGBoost,
+# LightGBM, SHAP and scikit-learn (roughly 400 MB more, mostly llvmlite) for a
+# server deployment where the faster backends are worth it.
+ARG EXTRAS=dashboard
 COPY pyproject.toml README.md LICENSE ./
 RUN mkdir -p src && touch src/__init__.py \
     && pip install --upgrade pip \
-    && pip install ".[dashboard]" \
+    && pip install ".[${EXTRAS}]" \
     && rm -rf src
 
 COPY config/ config/
