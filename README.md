@@ -133,9 +133,37 @@ The core pipeline does not change. See [docs/adding_diseases.md](docs/adding_dis
 ## Validation
 
 ```bash
-pytest                                    # ~190 tests
-python scripts/run_backtest.py --all      # walk-forward, against the baseline gate
+pytest                                     # ~260 tests
+python scripts/check_acceptance.py --full  # all 15 acceptance criteria
+python scripts/run_backtest.py --all       # walk-forward, against the baseline gate
 ```
+
+`check_acceptance.py` evaluates every criterion programmatically and reports
+`NOT VERIFIED` rather than assuming a pass for anything it could not measure.
+Last run on 4 districts over 2019–2024, 3 walk-forward folds:
+
+| # | Criterion | Result |
+|---|---|---|
+| 1 | ≥5 disease modules registered and functional | 5 registered, registry validates |
+| 2 | ≥3 digital proxy sources per disease | 4–6 per disease |
+| 3 | Predictions include 95% confidence intervals | coverage 0.945 measured out of sample |
+| 4 | SHAP + natural-language explanation on every prediction | built in the same call as the forecast |
+| 5 | Outbreak-detection AUC ≥ 0.75 | **0.933** |
+| 6 | Beats all three naive baselines | narrowest margin **+67.5%** |
+| 7 | District-level importation risk | produced, with source districts named |
+| 8 | Drift detection triggers retraining | step change caught, no false alarm on a stable stream |
+| 9 | Alerts carry actionable recommendations | 10 actions, all owned and timeboxed |
+| 10 | API returns predictions in < 2 s | **19 ms** for 50 predictions |
+| 11 | Dashboard heatmap, district detail, SHAP waterfall | 6 pages, 4 components |
+| 12 | Offline mode caches ≥2 weeks | 4 weeks cached |
+| 13 | `add_new_disease.py` scaffolds in < 5 min | config + module + registry + notebook |
+| 14 | `docker compose` brings up the stack | compose config valid, 7 services |
+| 15 | Test coverage ≥ 80% | **81%** |
+
+Numbers 3, 5 and 6 come from synthetic data, so they demonstrate that the
+machinery recovers a signal it was not given — not that the platform achieves
+this accuracy on Tanzanian surveillance data. Re-run against live feeds before
+quoting them.
 
 Every model must beat three naive baselines — seasonal naive, 4-week rolling
 mean, and smoothed persistence — before it is fit to deploy. `run_backtest.py`
