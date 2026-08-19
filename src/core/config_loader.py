@@ -123,6 +123,15 @@ def validate_disease_config(config: DiseaseConfig) -> List[str]:
     thresholds = [config.alerts.low, config.alerts.medium, config.alerts.high, config.alerts.critical]
     if thresholds != sorted(thresholds):
         problems.append("alert thresholds are not monotonically increasing low<medium<high<critical")
+    elif len(set(thresholds)) < len(thresholds):
+        # All-equal thresholds (the scaffold default of 0.0) would classify every
+        # forecast as critical, so this has to fail rather than pass quietly.
+        problems.append(
+            f"alert thresholds are not distinct ({thresholds}); every forecast would land in "
+            "the same risk band. Derive them from the district-level incidence distribution."
+        )
+    elif config.alerts.critical <= 0:
+        problems.append("alerts.critical must be greater than 0 cases per 1,000 per week")
     for level in ("medium", "high", "critical"):
         if not config.recommendations.get(level):
             problems.append(f"no response recommendations configured for level {level!r}")
