@@ -16,6 +16,14 @@ Run them in order the first time; after that they are independent.
 | 06 | [`06_drift_and_retraining.ipynb`](06_drift_and_retraining.ipynb) | The Google Flu Trends failure mode, caught: drift detection, the retraining decision, and the promotion gate. | ~4 min |
 | 07 | [`07_alerting_and_interventions.ipynb`](07_alerting_and_interventions.ipynb) | Forecast → alert → recommendation → delivery → logged response → impact estimate → back into the model. | ~3 min |
 
+> **Numbering note.** The build specification listed four notebooks
+> (`01_data_exploration`, `02_lag_analysis`, `03_model_comparison`,
+> `04_spatial_validation`). A dedicated **model training** notebook was added at
+> position 03 because training is the step most people need to follow first, and
+> comparison only makes sense once a model exists — so comparison and spatial
+> validation shifted to 04 and 05. Notebooks 06 and 07 cover the retraining and
+> intervention loops, which the original list did not reach.
+
 ## Running them
 
 ```bash

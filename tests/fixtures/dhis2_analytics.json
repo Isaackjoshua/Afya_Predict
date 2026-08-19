@@ -1,0 +1,25 @@
+{
+  "headers": [
+    {"name": "dx", "column": "Data", "valueType": "TEXT", "type": "java.lang.String"},
+    {"name": "ou", "column": "Organisation unit", "valueType": "TEXT", "type": "java.lang.String"},
+    {"name": "pe", "column": "Period", "valueType": "TEXT", "type": "java.lang.String"},
+    {"name": "value", "column": "Value", "valueType": "NUMBER", "type": "java.lang.Double"}
+  ],
+  "metaData": {
+    "items": {
+      "MAL_CONF": {"name": "Malaria confirmed cases"},
+      "CHO_SUSP": {"name": "Cholera suspected cases"}
+    },
+    "dimensions": {"dx": ["MAL_CONF", "CHO_SUSP"], "pe": ["2024W10", "2024W11"]}
+  },
+  "rows": [
+    ["MAL_CONF", "Kinondoni", "2024W10", "1834"],
+    ["MAL_CONF", "Kinondoni", "2024W11", "1902"],
+    ["MAL_CONF", "Mwanza City", "2024W10", "764"],
+    ["CHO_SUSP", "Kinondoni", "2024W10", "12"],
+    ["CHO_SUSP", "Mwanza City", "2024W11", "31"],
+    ["MAL_CONF", "Atlantis", "2024W10", "99"]
+  ],
+  "height": 6,
+  "width": 4
+}

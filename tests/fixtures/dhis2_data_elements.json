@@ -1,0 +1,7 @@
+{
+  "pager": {"page": 1, "pageCount": 1, "total": 2, "pageSize": 5},
+  "dataElements": [
+    {"id": "MAL_CONF", "name": "Malaria confirmed cases (weekly)"},
+    {"id": "MAL_TEST", "name": "Malaria tests performed"}
+  ]
+}
