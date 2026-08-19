@@ -290,19 +290,19 @@ class FeatureBuilder:
         # 5. Target history — autoregression is a legitimate signal, and its
         #    absence is what makes a model lose to the naive baseline.
         frame = _add_target_history(frame, target_column)
-        for name, note in (
-            (f"{target_column}_lag1", "last week's reported cases"),
-            (f"{target_column}_lag2", "cases two weeks ago"),
-            (f"{target_column}_lag4", "cases four weeks ago"),
-            (f"{target_column}_roll4", "4-week mean of reported cases"),
-            (f"{target_column}_roll8", "8-week mean of reported cases"),
-            (f"{target_column}_trend4", "4-week change in reported cases"),
-            (f"{target_column}_yoy", "same week last year"),
+        for name, lag, note in (
+            (f"{target_column}_lag1", 1, "last week's reported cases"),
+            (f"{target_column}_lag2", 2, "cases two weeks ago"),
+            (f"{target_column}_lag4", 4, "cases four weeks ago"),
+            (f"{target_column}_roll4", 1, "4-week mean of recent reported cases"),
+            (f"{target_column}_roll8", 1, "8-week mean of recent reported cases"),
+            (f"{target_column}_trend4", 1, "4-week change in reported cases"),
+            (f"{target_column}_yoy", 52, "cases in this same week last year"),
         ):
             if name in frame.columns:
                 provenance[name] = {
                     "feature": name, "kind": "autoregressive", "proxy": "case_history",
-                    "variable": target_column, "lag_weeks": 1, "source": "dhis2",
+                    "variable": target_column, "lag_weeks": lag, "source": "dhis2",
                     "mechanism": note,
                 }
 
