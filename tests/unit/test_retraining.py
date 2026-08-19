@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -37,8 +38,17 @@ def test_an_untrained_module_always_retrains(module):
 
 
 def test_a_trained_module_with_no_history_retrains_once(trained):
+    """A model with no recorded refit must be refitted, whatever else is on disk.
+
+    This also pins the settings-inheritance fix: the retrainer reads its state
+    from the module's own artifact directory, so a state file left by another
+    deployment (or another test) cannot leak in.
+    """
     module, _ = trained
-    decision = AutoRetrainer(module).should_retrain()
+    retrainer = AutoRetrainer(module)
+    assert retrainer.state_path.parent.is_relative_to(Path(module.settings.artifact_dir))
+    assert retrainer.load_state() == {}
+    decision = retrainer.should_retrain()
     assert decision.should_retrain
     assert "no retrain history" in " ".join(decision.reasons)
 

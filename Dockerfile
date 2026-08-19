@@ -19,7 +19,12 @@ RUN apt-get update \
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    # This platform is deployed over links that drop mid-download. Without
+    # generous retries a build fails with `error: incomplete-download` on a
+    # 10 MB wheel, which is exactly the condition the target deployments live in.
+    PIP_RETRIES=10 \
+    PIP_TIMEOUT=120
 
 WORKDIR /app
 

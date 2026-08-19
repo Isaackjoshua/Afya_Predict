@@ -73,7 +73,11 @@ class AutoRetrainer:
         self.module = module
         self.rolling_window_weeks = int(rolling_window_months * 4.345)
         self.min_improvement = min_improvement
-        self.settings = settings or get_settings()
+        # Inherit the module's settings by default. Falling back to the global
+        # singleton meant the retrainer could write its state to a different
+        # artifact directory than the one the module saves models into — the two
+        # only coincide when nothing has been overridden.
+        self.settings = settings or getattr(module, "settings", None) or get_settings()
 
     # -- state -------------------------------------------------------------
     @property

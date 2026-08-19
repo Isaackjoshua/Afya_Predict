@@ -46,9 +46,6 @@ trends = ["pytrends>=4.9"]
 dev = ["pytest>=8.0", "pytest-cov>=4.1", "httpx>=0.26", "ruff>=0.2", "hypothesis>=6.98"]
 all = ["afya-predict[dashboard,geo,db,notify,trends,dev]"]
 
-[project.scripts]
-afya = "src.cli:main"
-
 [project.urls]
 Homepage = "https://github.com/Isaackjoshua/Afya_Predict"
 Repository = "https://github.com/Isaackjoshua/Afya_Predict"
