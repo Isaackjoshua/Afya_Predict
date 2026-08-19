@@ -1,0 +1,87 @@
+# Malaria — vector-borne, best-validated climate signal in Tanzania.
+disease:
+  name: "Malaria"
+  code: "MAL"
+  transmission_mode: "vector_borne"
+  vector: "Anopheles gambiae/funestus"
+  pathogen: "Plasmodium falciparum"
+
+  digital_proxies:
+    - name: "rainfall"
+      source: "chirps"
+      relationship: "positive_with_saturation"
+      lag_weeks_range: [2, 12]
+      optimal_lag_weeks: 6
+      mechanism: "rainfall creates mosquito breeding sites (stagnant water pools)"
+      saturation_threshold_mm: 150
+
+    - name: "temperature"
+      source: "era5"
+      relationship: "bell_curve"
+      lag_weeks_range: [4, 20]
+      optimal_lag_weeks: 10
+      mechanism: "temperature controls mosquito development speed and parasite incubation"
+      optimal_range_celsius: [26, 28]
+
+    - name: "humidity"
+      source: "era5"
+      relationship: "positive_linear"
+      lag_weeks_range: [2, 8]
+      optimal_lag_weeks: 4
+      mechanism: "humidity affects mosquito survival and flight range"
+
+    - name: "ndvi"
+      source: "modis"
+      relationship: "positive_linear"
+      lag_weeks_range: [4, 12]
+      optimal_lag_weeks: 8
+      mechanism: "vegetation provides mosquito resting sites and indicates soil moisture"
+
+    - name: "mobility_inbound"
+      source: "cdr_mobility"
+      relationship: "positive_linear"
+      lag_weeks_range: [1, 4]
+      optimal_lag_weeks: 2
+      mechanism: "travellers from high-transmission areas import parasites"
+      spatial: true
+
+    - name: "population_density"
+      source: "population_density"
+      relationship: "positive_linear"
+      lag_weeks_range: [0, 0]
+      optimal_lag_weeks: 0
+      mechanism: "higher density = more human-vector contact"
+
+  spatial:
+    enabled: true
+    diffusion_model: "gravity"
+    importation_weight: 0.3
+
+  model:
+    primary: "xgboost"
+    ensemble_members: ["xgboost", "lightgbm", "sarima"]
+    forecast_horizon_weeks: 8
+    retrain_frequency: "monthly"
+    min_training_months: 24
+
+  alerts:
+    low: 0.5
+    medium: 2.0
+    high: 5.0
+    critical: 10.0
+
+  recommendations:
+    medium:
+      - "Increase RDT stock at health facilities in affected districts"
+      - "Pre-position ACT supplies for 2x normal demand"
+      - "Issue community awareness via local radio and SMS"
+    high:
+      - "Deploy indoor residual spraying (IRS) teams within 7 days"
+      - "Distribute 50,000 LLINs to affected wards"
+      - "Activate district rapid response team"
+      - "Request medical supply chain acceleration from MSD"
+    critical:
+      - "Request national emergency response team deployment"
+      - "Establish temporary treatment centers in hotspot wards"
+      - "Coordinate cross-border surveillance with neighbouring countries"
+      - "Escalate to WHO country office and Africa CDC"

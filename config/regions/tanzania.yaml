@@ -1,0 +1,143 @@
+# Tanzania region/council reference grid.
+#
+# Spatial unit  : administrative council (district level)
+# Temporal unit : ISO-8601 epidemiological week
+#
+# Centroids are APPROXIMATE (degrees, WGS84) and populations are approximate
+# 2022-census-era figures rounded to the nearest thousand. They are good enough
+# for gravity-model connectivity and for per-1,000 incidence rates; swap in an
+# authoritative shapefile + census extract for operational deployment by
+# pointing `boundaries.geojson_path` at it.
+region:
+  name: "Tanzania"
+  code: "TZ"
+  iso3: "TZA"
+  timezone: "Africa/Dar_es_Salaam"
+  epi_week_system: "iso8601"
+  crs: "EPSG:4326"
+
+boundaries:
+  admin_level: "council"
+  geojson_path: "data/raw/boundaries/tanzania_councils.geojson"  # optional
+  # When the GeoJSON is absent the system builds connectivity from the
+  # centroid + population table below (haversine distance gravity model).
+
+climate:
+  # Bounding box used when subsetting global rasters/reanalysis.
+  bbox: { west: 29.3, south: -11.8, east: 40.5, north: -0.9 }
+
+defaults:
+  reporting_completeness: 0.939   # national DHIS2 completeness (shortcoming #14)
+  weather_stations: 50            # sparse ground network (shortcoming #7)
+
+districts:
+  - { name: "Kinondoni",        region: "Dar es Salaam", lat: -6.75,  lon: 39.22, population: 1210000, urban: true,  wash_access: 0.82, density_km2: 5500 }
+  - { name: "Ilala",            region: "Dar es Salaam", lat: -6.83,  lon: 39.27, population: 1300000, urban: true,  wash_access: 0.84, density_km2: 4800 }
+  - { name: "Temeke",           region: "Dar es Salaam", lat: -6.90,  lon: 39.27, population: 1350000, urban: true,  wash_access: 0.75, density_km2: 4200 }
+  - { name: "Ubungo",           region: "Dar es Salaam", lat: -6.79,  lon: 39.19, population: 1000000, urban: true,  wash_access: 0.78, density_km2: 3900 }
+  - { name: "Kigamboni",        region: "Dar es Salaam", lat: -6.90,  lon: 39.35, population: 320000,  urban: true,  wash_access: 0.70, density_km2: 900  }
+  - { name: "Mwanza City",      region: "Mwanza",        lat: -2.52,  lon: 32.90, population: 460000,  urban: true,  wash_access: 0.72, density_km2: 3100 }
+  - { name: "Ilemela",          region: "Mwanza",        lat: -2.47,  lon: 32.94, population: 520000,  urban: true,  wash_access: 0.68, density_km2: 1400 }
+  - { name: "Magu",             region: "Mwanza",        lat: -2.58,  lon: 33.43, population: 400000,  urban: false, wash_access: 0.52, density_km2: 190  }
+  - { name: "Sengerema",        region: "Mwanza",        lat: -2.66,  lon: 32.62, population: 660000,  urban: false, wash_access: 0.48, density_km2: 210  }
+  - { name: "Ukerewe",          region: "Mwanza",        lat: -2.05,  lon: 33.00, population: 350000,  urban: false, wash_access: 0.45, density_km2: 500  }
+  - { name: "Misungwi",         region: "Mwanza",        lat: -2.85,  lon: 33.08, population: 400000,  urban: false, wash_access: 0.47, density_km2: 180  }
+  - { name: "Kwimba",           region: "Mwanza",        lat: -2.98,  lon: 33.20, population: 420000,  urban: false, wash_access: 0.46, density_km2: 130  }
+  - { name: "Arusha City",      region: "Arusha",        lat: -3.37,  lon: 36.68, population: 620000,  urban: true,  wash_access: 0.80, density_km2: 2400 }
+  - { name: "Arusha DC",        region: "Arusha",        lat: -3.45,  lon: 36.75, population: 340000,  urban: false, wash_access: 0.60, density_km2: 300  }
+  - { name: "Meru",             region: "Arusha",        lat: -3.25,  lon: 36.90, population: 350000,  urban: false, wash_access: 0.58, density_km2: 220  }
+  - { name: "Monduli",          region: "Arusha",        lat: -3.30,  lon: 36.45, population: 220000,  urban: false, wash_access: 0.42, density_km2: 30   }
+  - { name: "Longido",          region: "Arusha",        lat: -2.73,  lon: 36.70, population: 175000,  urban: false, wash_access: 0.38, density_km2: 20   }
+  - { name: "Karatu",           region: "Arusha",        lat: -3.34,  lon: 35.70, population: 280000,  urban: false, wash_access: 0.50, density_km2: 90   }
+  - { name: "Ngorongoro",       region: "Arusha",        lat: -3.00,  lon: 35.50, population: 230000,  urban: false, wash_access: 0.35, density_km2: 15   }
+  - { name: "Dodoma City",      region: "Dodoma",        lat: -6.17,  lon: 35.74, population: 770000,  urban: true,  wash_access: 0.76, density_km2: 1200 }
+  - { name: "Bahi",             region: "Dodoma",        lat: -6.00,  lon: 35.28, population: 260000,  urban: false, wash_access: 0.44, density_km2: 45   }
+  - { name: "Chamwino",         region: "Dodoma",        lat: -6.25,  lon: 36.00, population: 400000,  urban: false, wash_access: 0.43, density_km2: 45   }
+  - { name: "Kondoa",           region: "Dodoma",        lat: -4.90,  lon: 35.78, population: 300000,  urban: false, wash_access: 0.46, density_km2: 55   }
+  - { name: "Mpwapwa",          region: "Dodoma",        lat: -6.35,  lon: 36.48, population: 350000,  urban: false, wash_access: 0.45, density_km2: 55   }
+  - { name: "Kongwa",           region: "Dodoma",        lat: -6.20,  lon: 36.42, population: 350000,  urban: false, wash_access: 0.47, density_km2: 70   }
+  - { name: "Mbeya City",       region: "Mbeya",         lat: -8.91,  lon: 33.46, population: 450000,  urban: true,  wash_access: 0.79, density_km2: 2100 }
+  - { name: "Mbeya DC",         region: "Mbeya",         lat: -8.80,  lon: 33.60, population: 320000,  urban: false, wash_access: 0.55, density_km2: 130  }
+  - { name: "Rungwe",           region: "Mbeya",         lat: -9.20,  lon: 33.65, population: 340000,  urban: false, wash_access: 0.58, density_km2: 180  }
+  - { name: "Chunya",           region: "Mbeya",         lat: -8.53,  lon: 33.42, population: 300000,  urban: false, wash_access: 0.40, density_km2: 25   }
+  - { name: "Kyela",            region: "Mbeya",         lat: -9.58,  lon: 33.85, population: 250000,  urban: false, wash_access: 0.52, density_km2: 250  }
+  - { name: "Mwanjelwa",        region: "Mbeya",         lat: -8.93,  lon: 33.43, population: 180000,  urban: true,  wash_access: 0.74, density_km2: 2600 }
+  - { name: "Morogoro MC",      region: "Morogoro",      lat: -6.82,  lon: 37.66, population: 470000,  urban: true,  wash_access: 0.77, density_km2: 1700 }
+  - { name: "Morogoro DC",      region: "Morogoro",      lat: -7.00,  lon: 37.60, population: 320000,  urban: false, wash_access: 0.50, density_km2: 45   }
+  - { name: "Kilosa",           region: "Morogoro",      lat: -6.83,  lon: 36.98, population: 450000,  urban: false, wash_access: 0.44, density_km2: 30   }
+  - { name: "Kilombero",        region: "Morogoro",      lat: -8.20,  lon: 36.35, population: 480000,  urban: false, wash_access: 0.46, density_km2: 35   }
+  - { name: "Ulanga",           region: "Morogoro",      lat: -8.75,  lon: 36.40, population: 280000,  urban: false, wash_access: 0.40, density_km2: 15   }
+  - { name: "Mvomero",          region: "Morogoro",      lat: -6.35,  lon: 37.45, population: 380000,  urban: false, wash_access: 0.45, density_km2: 40   }
+  - { name: "Tanga City",       region: "Tanga",         lat: -5.07,  lon: 39.10, population: 400000,  urban: true,  wash_access: 0.75, density_km2: 1300 }
+  - { name: "Muheza",           region: "Tanga",         lat: -5.17,  lon: 38.78, population: 250000,  urban: false, wash_access: 0.48, density_km2: 80   }
+  - { name: "Korogwe",          region: "Tanga",         lat: -5.15,  lon: 38.46, population: 320000,  urban: false, wash_access: 0.50, density_km2: 70   }
+  - { name: "Handeni",          region: "Tanga",         lat: -5.43,  lon: 38.02, population: 300000,  urban: false, wash_access: 0.42, density_km2: 40   }
+  - { name: "Lushoto",          region: "Tanga",         lat: -4.78,  lon: 38.29, population: 350000,  urban: false, wash_access: 0.55, density_km2: 180  }
+  - { name: "Pangani",          region: "Tanga",         lat: -5.43,  lon: 38.97, population: 60000,   urban: false, wash_access: 0.52, density_km2: 30   }
+  - { name: "Moshi MC",         region: "Kilimanjaro",   lat: -3.35,  lon: 37.34, population: 220000,  urban: true,  wash_access: 0.86, density_km2: 3400 }
+  - { name: "Moshi DC",         region: "Kilimanjaro",   lat: -3.30,  lon: 37.40, population: 470000,  urban: false, wash_access: 0.72, density_km2: 350  }
+  - { name: "Hai",              region: "Kilimanjaro",   lat: -3.30,  lon: 37.10, population: 250000,  urban: false, wash_access: 0.70, density_km2: 190  }
+  - { name: "Rombo",            region: "Kilimanjaro",   lat: -3.15,  lon: 37.60, population: 300000,  urban: false, wash_access: 0.66, density_km2: 220  }
+  - { name: "Same",             region: "Kilimanjaro",   lat: -4.07,  lon: 37.73, population: 300000,  urban: false, wash_access: 0.52, density_km2: 55   }
+  - { name: "Mtwara MC",        region: "Mtwara",        lat: -10.27, lon: 40.18, population: 130000,  urban: true,  wash_access: 0.71, density_km2: 1400 }
+  - { name: "Mtwara DC",        region: "Mtwara",        lat: -10.40, lon: 39.90, population: 250000,  urban: false, wash_access: 0.43, density_km2: 60   }
+  - { name: "Masasi",           region: "Mtwara",        lat: -10.72, lon: 38.80, population: 350000,  urban: false, wash_access: 0.41, density_km2: 60   }
+  - { name: "Newala",           region: "Mtwara",        lat: -10.95, lon: 39.28, population: 220000,  urban: false, wash_access: 0.40, density_km2: 90   }
+  - { name: "Lindi MC",         region: "Lindi",         lat: -9.99,  lon: 39.71, population: 90000,   urban: true,  wash_access: 0.68, density_km2: 700  }
+  - { name: "Kilwa",            region: "Lindi",         lat: -8.92,  lon: 39.50, population: 240000,  urban: false, wash_access: 0.38, density_km2: 20   }
+  - { name: "Nachingwea",       region: "Lindi",         lat: -10.37, lon: 38.77, population: 200000,  urban: false, wash_access: 0.40, density_km2: 30   }
+  - { name: "Iringa MC",        region: "Iringa",        lat: -7.77,  lon: 35.70, population: 200000,  urban: true,  wash_access: 0.80, density_km2: 1100 }
+  - { name: "Iringa DC",        region: "Iringa",        lat: -7.90,  lon: 35.55, population: 280000,  urban: false, wash_access: 0.53, density_km2: 30   }
+  - { name: "Mufindi",          region: "Iringa",        lat: -8.55,  lon: 35.30, population: 330000,  urban: false, wash_access: 0.55, density_km2: 45   }
+  - { name: "Njombe TC",        region: "Njombe",        lat: -9.33,  lon: 34.77, population: 150000,  urban: true,  wash_access: 0.78, density_km2: 400  }
+  - { name: "Makete",           region: "Njombe",        lat: -9.18,  lon: 34.13, population: 110000,  urban: false, wash_access: 0.50, density_km2: 25   }
+  - { name: "Songea MC",        region: "Ruvuma",        lat: -10.68, lon: 35.65, population: 210000,  urban: true,  wash_access: 0.76, density_km2: 700  }
+  - { name: "Songea DC",        region: "Ruvuma",        lat: -10.50, lon: 35.40, population: 190000,  urban: false, wash_access: 0.46, density_km2: 20   }
+  - { name: "Tunduru",          region: "Ruvuma",        lat: -11.10, lon: 37.37, population: 350000,  urban: false, wash_access: 0.38, density_km2: 20   }
+  - { name: "Mbinga",           region: "Ruvuma",        lat: -10.95, lon: 35.02, population: 330000,  urban: false, wash_access: 0.47, density_km2: 45   }
+  - { name: "Tabora MC",        region: "Tabora",        lat: -5.02,  lon: 32.80, population: 290000,  urban: true,  wash_access: 0.70, density_km2: 600  }
+  - { name: "Nzega",            region: "Tabora",        lat: -4.22,  lon: 33.18, population: 400000,  urban: false, wash_access: 0.42, density_km2: 60   }
+  - { name: "Igunga",           region: "Tabora",        lat: -4.28,  lon: 33.88, population: 420000,  urban: false, wash_access: 0.40, density_km2: 55   }
+  - { name: "Urambo",           region: "Tabora",        lat: -5.07,  lon: 32.05, population: 220000,  urban: false, wash_access: 0.36, density_km2: 20   }
+  - { name: "Kigoma MC",        region: "Kigoma",        lat: -4.88,  lon: 29.63, population: 220000,  urban: true,  wash_access: 0.69, density_km2: 1000 }
+  - { name: "Kasulu",           region: "Kigoma",        lat: -4.58,  lon: 30.10, population: 480000,  urban: false, wash_access: 0.39, density_km2: 90   }
+  - { name: "Kibondo",          region: "Kigoma",        lat: -3.58,  lon: 30.72, population: 300000,  urban: false, wash_access: 0.36, density_km2: 40   }
+  - { name: "Uvinza",           region: "Kigoma",        lat: -5.10,  lon: 30.39, population: 400000,  urban: false, wash_access: 0.34, density_km2: 20   }
+  - { name: "Shinyanga MC",     region: "Shinyanga",     lat: -3.66,  lon: 33.42, population: 250000,  urban: true,  wash_access: 0.68, density_km2: 900  }
+  - { name: "Kahama TC",        region: "Shinyanga",     lat: -3.84,  lon: 32.60, population: 420000,  urban: true,  wash_access: 0.62, density_km2: 700  }
+  - { name: "Kishapu",          region: "Shinyanga",     lat: -3.62,  lon: 33.55, population: 320000,  urban: false, wash_access: 0.40, density_km2: 60   }
+  - { name: "Musoma MC",        region: "Mara",          lat: -1.50,  lon: 33.80, population: 180000,  urban: true,  wash_access: 0.71, density_km2: 1300 }
+  - { name: "Bunda",            region: "Mara",          lat: -2.05,  lon: 33.86, population: 400000,  urban: false, wash_access: 0.44, density_km2: 90   }
+  - { name: "Tarime",           region: "Mara",          lat: -1.35,  lon: 34.37, population: 450000,  urban: false, wash_access: 0.42, density_km2: 180  }
+  - { name: "Rorya",            region: "Mara",          lat: -1.20,  lon: 33.95, population: 320000,  urban: false, wash_access: 0.40, density_km2: 150  }
+  - { name: "Bukoba MC",        region: "Kagera",        lat: -1.33,  lon: 31.81, population: 160000,  urban: true,  wash_access: 0.74, density_km2: 1200 }
+  - { name: "Bukoba DC",        region: "Kagera",        lat: -1.45,  lon: 31.70, population: 300000,  urban: false, wash_access: 0.50, density_km2: 130  }
+  - { name: "Muleba",           region: "Kagera",        lat: -1.83,  lon: 31.65, population: 540000,  urban: false, wash_access: 0.45, density_km2: 130  }
+  - { name: "Ngara",            region: "Kagera",        lat: -2.47,  lon: 30.66, population: 320000,  urban: false, wash_access: 0.38, density_km2: 90   }
+  - { name: "Biharamulo",       region: "Kagera",        lat: -2.63,  lon: 31.31, population: 320000,  urban: false, wash_access: 0.37, density_km2: 45   }
+  - { name: "Singida MC",       region: "Singida",       lat: -4.82,  lon: 34.75, population: 190000,  urban: true,  wash_access: 0.70, density_km2: 600  }
+  - { name: "Iramba",           region: "Singida",       lat: -4.42,  lon: 34.42, population: 280000,  urban: false, wash_access: 0.43, density_km2: 55   }
+  - { name: "Manyoni",          region: "Singida",       lat: -5.75,  lon: 34.83, population: 300000,  urban: false, wash_access: 0.38, density_km2: 15   }
+  - { name: "Babati TC",        region: "Manyara",       lat: -4.21,  lon: 35.75, population: 120000,  urban: true,  wash_access: 0.72, density_km2: 500  }
+  - { name: "Babati DC",        region: "Manyara",       lat: -4.30,  lon: 35.60, population: 350000,  urban: false, wash_access: 0.46, density_km2: 55   }
+  - { name: "Mbulu",            region: "Manyara",       lat: -3.85,  lon: 35.53, population: 330000,  urban: false, wash_access: 0.44, density_km2: 60   }
+  - { name: "Simanjiro",        region: "Manyara",       lat: -4.80,  lon: 37.00, population: 250000,  urban: false, wash_access: 0.36, density_km2: 12   }
+  - { name: "Sumbawanga MC",    region: "Rukwa",         lat: -7.97,  lon: 31.62, population: 230000,  urban: true,  wash_access: 0.66, density_km2: 500  }
+  - { name: "Nkasi",            region: "Rukwa",         lat: -7.35,  lon: 31.00, population: 280000,  urban: false, wash_access: 0.37, density_km2: 30   }
+  - { name: "Mpanda MC",        region: "Katavi",        lat: -6.35,  lon: 31.07, population: 130000,  urban: true,  wash_access: 0.63, density_km2: 400  }
+  - { name: "Tanganyika",       region: "Katavi",        lat: -6.75,  lon: 30.80, population: 230000,  urban: false, wash_access: 0.34, density_km2: 12   }
+  - { name: "Geita TC",         region: "Geita",         lat: -2.87,  lon: 32.23, population: 280000,  urban: true,  wash_access: 0.60, density_km2: 600  }
+  - { name: "Geita DC",         region: "Geita",         lat: -3.00,  lon: 32.10, population: 620000,  urban: false, wash_access: 0.42, density_km2: 90   }
+  - { name: "Chato",            region: "Geita",         lat: -2.63,  lon: 31.77, population: 380000,  urban: false, wash_access: 0.41, density_km2: 80   }
+  - { name: "Bariadi TC",       region: "Simiyu",        lat: -2.80,  lon: 33.99, population: 200000,  urban: true,  wash_access: 0.58, density_km2: 300  }
+  - { name: "Meatu",           region: "Simiyu",        lat: -3.50,  lon: 34.35, population: 350000,  urban: false, wash_access: 0.36, density_km2: 30   }
+  - { name: "Maswa",            region: "Simiyu",        lat: -2.98,  lon: 33.98, population: 400000,  urban: false, wash_access: 0.40, density_km2: 90   }
+  - { name: "Kibaha TC",        region: "Pwani",         lat: -6.77,  lon: 38.92, population: 250000,  urban: true,  wash_access: 0.73, density_km2: 500  }
+  - { name: "Bagamoyo",         region: "Pwani",         lat: -6.44,  lon: 38.90, population: 400000,  urban: false, wash_access: 0.48, density_km2: 60   }
+  - { name: "Rufiji",           region: "Pwani",         lat: -7.90,  lon: 38.90, population: 300000,  urban: false, wash_access: 0.38, density_km2: 20   }
+  - { name: "Kilindi",          region: "Tanga",         lat: -5.80,  lon: 37.55, population: 250000,  urban: false, wash_access: 0.36, density_km2: 30   }
+  - { name: "Vwawa",            region: "Songwe",        lat: -9.10,  lon: 32.93, population: 200000,  urban: false, wash_access: 0.44, density_km2: 70   }
+  - { name: "Tunduma TC",       region: "Songwe",        lat: -9.30,  lon: 32.77, population: 150000,  urban: true,  wash_access: 0.62, density_km2: 1500 }
+  - { name: "Unguja Mjini",     region: "Zanzibar Urban West", lat: -6.16, lon: 39.20, population: 600000, urban: true, wash_access: 0.83, density_km2: 3000 }
+  - { name: "Unguja Kaskazini", region: "Zanzibar North", lat: -5.93, lon: 39.30, population: 250000,  urban: false, wash_access: 0.60, density_km2: 350  }
+  - { name: "Pemba Chake Chake",region: "Pemba South",   lat: -5.24,  lon: 39.77, population: 200000,  urban: false, wash_access: 0.58, density_km2: 400  }

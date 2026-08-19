@@ -1,0 +1,86 @@
+# Cholera — waterborne, strong climate + WASH signal.
+disease:
+  name: "Cholera"
+  code: "CHO"
+  transmission_mode: "waterborne"
+  vector: ""
+  pathogen: "Vibrio cholerae O1/O139"
+
+  digital_proxies:
+    - name: "rainfall"
+      source: "chirps"
+      relationship: "threshold"
+      lag_weeks_range: [1, 8]
+      optimal_lag_weeks: 3
+      mechanism: "heavy rain floods latrines and contaminates drinking water sources"
+      threshold_mm: 80
+
+    - name: "temperature"
+      source: "era5"
+      relationship: "positive_linear"
+      lag_weeks_range: [8, 20]
+      optimal_lag_weeks: 16
+      mechanism: "warm water accelerates V. cholerae growth in aquatic reservoirs (~4-month lag)"
+
+    - name: "wash_access"
+      source: "wash_indicators"
+      relationship: "negative_linear"
+      lag_weeks_range: [0, 0]
+      optimal_lag_weeks: 0
+      mechanism: "low improved-water and sanitation coverage sustains faecal-oral transmission"
+
+    - name: "population_density"
+      source: "population_density"
+      relationship: "positive_linear"
+      lag_weeks_range: [0, 0]
+      optimal_lag_weeks: 0
+      mechanism: "crowding raises exposure to shared contaminated water points"
+
+    - name: "mobility_inbound"
+      source: "cdr_mobility"
+      relationship: "positive_linear"
+      lag_weeks_range: [1, 3]
+      optimal_lag_weeks: 1
+      mechanism: "infected travellers seed new districts along transport corridors"
+      spatial: true
+
+    - name: "ndvi"
+      source: "modis"
+      relationship: "positive_linear"
+      lag_weeks_range: [2, 10]
+      optimal_lag_weeks: 6
+      mechanism: "greenness tracks standing surface water and flooding extent"
+
+  spatial:
+    enabled: true
+    diffusion_model: "gravity"
+    importation_weight: 0.45
+
+  model:
+    primary: "xgboost"
+    ensemble_members: ["xgboost", "lightgbm", "sarima"]
+    forecast_horizon_weeks: 6
+    retrain_frequency: "monthly"
+    min_training_months: 24
+
+  alerts:
+    low: 0.05
+    medium: 0.2
+    high: 0.6
+    critical: 1.5
+
+  recommendations:
+    medium:
+      - "Pre-position 5,000 ORS sachets at district health facilities"
+      - "Test and chlorinate high-risk community water points"
+      - "Brief health facility staff on cholera case definition and reporting"
+    high:
+      - "Deploy 5,000 ORS kits and 2 rehydration tents within 14 days"
+      - "Pre-position chlorine tablets at all mapped water points"
+      - "Issue community advisory via SMS and religious/community leaders"
+      - "Activate district cholera task force and daily reporting"
+    critical:
+      - "Establish cholera treatment centres (CTC) in hotspot wards"
+      - "Request oral cholera vaccine (OCV) campaign from ICG stockpile"
+      - "Deploy emergency water trucking and mass chlorination"
+      - "Escalate to national EOC, WHO country office and Africa CDC"

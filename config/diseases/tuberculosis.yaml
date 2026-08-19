@@ -1,0 +1,77 @@
+# Tuberculosis — airborne, density- and crowding-driven; slow dynamics.
+disease:
+  name: "Tuberculosis"
+  code: "TB"
+  transmission_mode: "airborne"
+  vector: ""
+  pathogen: "Mycobacterium tuberculosis"
+
+  digital_proxies:
+    - name: "population_density"
+      source: "population_density"
+      relationship: "positive_with_saturation"
+      lag_weeks_range: [0, 0]
+      optimal_lag_weeks: 0
+      mechanism: "crowded households and settlements drive airborne transmission"
+      saturation_threshold_persons_km2: 8000
+
+    - name: "air_quality_pm25"
+      source: "sentinel5p"
+      relationship: "positive_linear"
+      lag_weeks_range: [8, 24]
+      optimal_lag_weeks: 16
+      mechanism: "particulate exposure impairs pulmonary clearance and raises susceptibility"
+
+    - name: "humidity"
+      source: "era5"
+      relationship: "negative_linear"
+      lag_weeks_range: [4, 16]
+      optimal_lag_weeks: 8
+      mechanism: "dry indoor air prolongs droplet-nuclei survival"
+
+    - name: "mobility_inbound"
+      source: "cdr_mobility"
+      relationship: "positive_linear"
+      lag_weeks_range: [4, 16]
+      optimal_lag_weeks: 8
+      mechanism: "labour migration links high-incidence mining/urban districts to rural ones"
+      spatial: true
+
+    - name: "wash_access"
+      source: "wash_indicators"
+      relationship: "negative_linear"
+      lag_weeks_range: [0, 0]
+      optimal_lag_weeks: 0
+      mechanism: "proxy for household deprivation and undernutrition, key TB risk factors"
+
+  spatial:
+    enabled: true
+    diffusion_model: "gravity"
+    importation_weight: 0.2
+
+  model:
+    primary: "lightgbm"
+    ensemble_members: ["lightgbm", "xgboost", "sarima"]
+    forecast_horizon_weeks: 12
+    retrain_frequency: "monthly"
+    min_training_months: 36
+
+  alerts:
+    low: 0.02
+    medium: 0.06
+    high: 0.12
+    critical: 0.25
+
+  recommendations:
+    medium:
+      - "Expand active case-finding in high-density wards"
+      - "Ensure GeneXpert cartridge stock covers 1.5x baseline demand"
+      - "Screen household contacts of notified cases within 14 days"
+    high:
+      - "Deploy mobile chest X-ray / screening teams to hotspot wards"
+      - "Scale TB preventive therapy for contacts and PLHIV"
+      - "Audit treatment-interruption rates and reinstate defaulter tracing"
+    critical:
+      - "Launch district-wide intensified case-finding campaign"
+      - "Request national TB programme surge support and drug buffer stock"
+      - "Investigate drug-resistant TB clustering with reference laboratory"

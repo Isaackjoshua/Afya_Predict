@@ -1,0 +1,80 @@
+# HIV — mobility- and structural-driver based hotspot risk mapping.
+# NOTE: this module forecasts new-diagnosis intensity / hotspot risk for
+# programme targeting, not individual-level risk. It is deliberately
+# aggregate-only (district x week) to avoid any re-identification.
+disease:
+  name: "HIV"
+  code: "HIV"
+  transmission_mode: "sexual"
+  vector: ""
+  pathogen: "Human immunodeficiency virus type 1"
+
+  digital_proxies:
+    - name: "mobility_inbound"
+      source: "cdr_mobility"
+      relationship: "positive_linear"
+      lag_weeks_range: [4, 26]
+      optimal_lag_weeks: 12
+      mechanism: "circular labour migration and transport-corridor mobility structure sexual networks"
+      spatial: true
+
+    - name: "mobility_outbound"
+      source: "cdr_mobility"
+      relationship: "positive_linear"
+      lag_weeks_range: [4, 26]
+      optimal_lag_weeks: 12
+      mechanism: "out-migration to hotspot districts returns infection to home districts"
+      spatial: true
+
+    - name: "population_density"
+      source: "population_density"
+      relationship: "positive_linear"
+      lag_weeks_range: [0, 0]
+      optimal_lag_weeks: 0
+      mechanism: "urban density concentrates sexual network connectivity and key populations"
+
+    - name: "wash_access"
+      source: "wash_indicators"
+      relationship: "negative_linear"
+      lag_weeks_range: [0, 0]
+      optimal_lag_weeks: 0
+      mechanism: "deprivation proxy correlated with transactional-sex risk and service gaps"
+
+    - name: "ndvi"
+      source: "modis"
+      relationship: "negative_linear"
+      lag_weeks_range: [8, 26]
+      optimal_lag_weeks: 16
+      mechanism: "agricultural failure (low greenness) drives economic migration to hotspots"
+
+  spatial:
+    enabled: true
+    diffusion_model: "gravity"
+    importation_weight: 0.5
+
+  model:
+    primary: "lightgbm"
+    ensemble_members: ["lightgbm", "xgboost"]
+    forecast_horizon_weeks: 12
+    retrain_frequency: "monthly"
+    min_training_months: 36
+
+  alerts:
+    low: 0.01
+    medium: 0.04
+    high: 0.09
+    critical: 0.18
+
+  recommendations:
+    medium:
+      - "Extend HIV testing services (HTS) hours at transport-corridor facilities"
+      - "Ensure condom and PrEP commodity stock covers 1.5x baseline"
+      - "Brief community health workers on index-contact testing"
+    high:
+      - "Deploy mobile HTS and PrEP outreach to hotspot wards"
+      - "Scale up key-population friendly services and peer navigators"
+      - "Strengthen ART linkage tracking to close the 2nd 95 gap"
+    critical:
+      - "Launch district HIV surge plan with national programme support"
+      - "Request additional ARV and PrEP buffer stock"
+      - "Commission local network/hotspot mapping study with community partners"

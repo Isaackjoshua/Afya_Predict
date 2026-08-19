@@ -1,0 +1,52 @@
+# Alert behaviour shared by all diseases. Per-disease thresholds live in
+# config/diseases/<disease>.yaml under `alerts:`; these are the cross-cutting
+# rules for classification, escalation and delivery.
+risk_levels: ["low", "medium", "high", "critical"]
+
+classification:
+  # A prediction is scored against per-1,000-population incidence thresholds.
+  # `trend_boost` bumps a district one level when the forecast is rising fast.
+  trend_boost:
+    enabled: true
+    min_relative_increase: 0.5   # +50% vs trailing 4-week mean
+    max_levels: 1
+  # Wide confidence intervals or poor input data pull the level back down
+  # one step and stamp the alert with a LOW DATA CONFIDENCE warning (rule #7).
+  uncertainty_penalty:
+    enabled: true
+    ci_width_ratio_threshold: 1.5   # (upper-lower)/point estimate
+    quality_score_threshold: 0.6
+
+escalation:
+  # Consecutive weeks at a level before automatic escalation to the next.
+  consecutive_weeks_to_escalate: 2
+  # Districts whose importation risk exceeds this are escalated even without
+  # local case growth (shortcoming #10).
+  importation_risk_escalation: 0.7
+  notify_national_from: "high"
+  notify_who_from: "critical"
+
+deduplication:
+  # Do not re-send an identical alert for the same district/disease/level
+  # inside this window.
+  window_days: 7
+
+delivery:
+  channels: ["log", "email", "sms", "dhis2"]
+  # Channels attempted per level; missing credentials degrade to `log`
+  # and the alert is queued for the offline sync manager.
+  by_level:
+    low: ["log"]
+    medium: ["log", "email"]
+    high: ["log", "email", "sms"]
+    critical: ["log", "email", "sms", "dhis2"]
+  quiet_hours: { enabled: false, start: "22:00", end: "06:00" }
+
+recipients:
+  district_health_officer: { email: "", phone: "" }
+  regional_medical_officer: { email: "", phone: "" }
+  national_eoc: { email: "", phone: "" }
+
+data_confidence:
+  low_confidence_banner: "LOW DATA CONFIDENCE — verify with field reports before acting."
+  min_sources_for_full_confidence: 3

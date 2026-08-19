@@ -1,0 +1,42 @@
+# Template for adding ANY new disease. Copy with:
+#   python scripts/add_new_disease.py --name "Dengue Fever" --code DEN \
+#       --transmission vector_borne
+disease:
+  name: ""                    # e.g., "Dengue Fever"
+  code: ""                    # e.g., "DEN"
+  transmission_mode: ""       # vector_borne | waterborne | airborne | sexual | zoonotic
+  vector: ""                  # if applicable
+  pathogen: ""
+
+  digital_proxies:            # LIST ALL digital attributes proportional to spreading
+    - name: ""                # descriptive name
+      source: ""              # which adapter provides this data
+      relationship: ""        # positive_linear | negative_linear | bell_curve |
+                              # positive_with_saturation | threshold
+      lag_weeks_range: [0, 0] # range to search for the optimal lag
+      optimal_lag_weeks: 0    # starting estimate; the system refits this per district
+      mechanism: ""           # WHY this proxy relates to transmission (causal reasoning)
+      # ... any proxy-specific parameters (thresholds, optimal ranges, etc.)
+
+  spatial:
+    enabled: false
+    diffusion_model: "gravity"
+    importation_weight: 0.0
+
+  model:
+    primary: "xgboost"
+    ensemble_members: []
+    forecast_horizon_weeks: 4
+    retrain_frequency: "monthly"
+    min_training_months: 24
+
+  alerts:
+    low: 0.0
+    medium: 0.0
+    high: 0.0
+    critical: 0.0
+
+  recommendations:
+    medium: []
+    high: []
+    critical: []

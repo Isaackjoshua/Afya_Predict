@@ -1,0 +1,22 @@
+# Template for adding a new country/region grid.
+region:
+  name: ""            # e.g., "Kenya"
+  code: ""            # e.g., "KE"
+  iso3: ""            # e.g., "KEN"
+  timezone: ""        # e.g., "Africa/Nairobi"
+  epi_week_system: "iso8601"
+  crs: "EPSG:4326"
+
+boundaries:
+  admin_level: ""     # e.g., "sub_county"
+  geojson_path: ""    # optional path to an admin-boundary GeoJSON
+
+climate:
+  bbox: { west: 0.0, south: 0.0, east: 0.0, north: 0.0 }
+
+defaults:
+  reporting_completeness: 0.9
+  weather_stations: 0
+
+districts:
+  - { name: "", region: "", lat: 0.0, lon: 0.0, population: 0, urban: false, wash_access: 0.0, density_km2: 0 }

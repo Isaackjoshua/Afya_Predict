@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Environment
+.env
+.env.local
+
+# Data & artifacts
+data/raw/
+data/interim/
+data/processed/
+data/cache/
+artifacts/
+models_store/
+*.sqlite
+*.db
+*.log
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Build prompt spec (not tracked)
+AFYA_PREDICT_Claude_Code_Prompt.md

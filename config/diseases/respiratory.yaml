@@ -1,0 +1,85 @@
+# Acute respiratory infections — air quality + seasonality driven.
+disease:
+  name: "Acute Respiratory Infection"
+  code: "ARI"
+  transmission_mode: "airborne"
+  vector: ""
+  pathogen: "Influenza / RSV / SARS-CoV-2 / bacterial pneumonia (syndromic)"
+
+  digital_proxies:
+    - name: "air_quality_pm25"
+      source: "sentinel5p"
+      relationship: "positive_linear"
+      lag_weeks_range: [0, 4]
+      optimal_lag_weeks: 1
+      mechanism: "particulate and NO2 exposure inflames airways and precipitates infection"
+
+    - name: "temperature"
+      source: "era5"
+      relationship: "negative_linear"
+      lag_weeks_range: [1, 6]
+      optimal_lag_weeks: 2
+      mechanism: "cooler spells increase indoor crowding and virus stability"
+
+    - name: "humidity"
+      source: "era5"
+      relationship: "bell_curve"
+      lag_weeks_range: [1, 6]
+      optimal_lag_weeks: 2
+      mechanism: "very low and very high humidity both favour respiratory virus transmission"
+      optimal_range_percent: [40, 60]
+
+    - name: "population_density"
+      source: "population_density"
+      relationship: "positive_linear"
+      lag_weeks_range: [0, 0]
+      optimal_lag_weeks: 0
+      mechanism: "contact rate scales with density"
+
+    - name: "mobility_inbound"
+      source: "cdr_mobility"
+      relationship: "positive_linear"
+      lag_weeks_range: [1, 3]
+      optimal_lag_weeks: 1
+      mechanism: "travel imports circulating strains between districts"
+      spatial: true
+
+    - name: "search_interest"
+      source: "search_trends"
+      relationship: "positive_linear"
+      lag_weeks_range: [0, 2]
+      optimal_lag_weeks: 0
+      mechanism: "urban symptom searches lead facility presentation (OPTIONAL urban boost only)"
+      optional: true
+
+  spatial:
+    enabled: true
+    diffusion_model: "gravity"
+    importation_weight: 0.4
+
+  model:
+    primary: "xgboost"
+    ensemble_members: ["xgboost", "lightgbm", "sarima"]
+    forecast_horizon_weeks: 4
+    retrain_frequency: "monthly"
+    min_training_months: 24
+
+  alerts:
+    low: 2.0
+    medium: 6.0
+    high: 12.0
+    critical: 20.0
+
+  recommendations:
+    medium:
+      - "Verify oxygen concentrator functionality at district hospitals"
+      - "Top up amoxicillin dispersible tablet stock for paediatric pneumonia"
+      - "Remind facilities of IMCI fast-breathing screening protocol"
+    high:
+      - "Pre-position oxygen cylinders and pulse oximeters in affected districts"
+      - "Open surge outpatient triage at referral facilities"
+      - "Issue advisory on indoor air quality and cooking-smoke reduction"
+    critical:
+      - "Activate district respiratory surge plan and additional ward capacity"
+      - "Request national oxygen supply chain acceleration"
+      - "Initiate sentinel virological sampling to identify circulating pathogen"
