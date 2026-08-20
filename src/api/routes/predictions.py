@@ -52,6 +52,17 @@ def list_predictions(
     )
 
 
+# Declared before "/{disease}/{district}": Starlette matches routes in
+# order, so the two-parameter route was swallowing every by-id lookup and
+# rejecting the id as an unknown district.
+@router.get("/id/{prediction_id}", response_model=PredictionResponse)
+def prediction_by_id(prediction_id: str) -> PredictionResponse:
+    prediction = get_cache().get_prediction(prediction_id)
+    if prediction is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown prediction_id")
+    return PredictionResponse(prediction=prediction)
+
+
 @router.get("/{disease}/{district}", response_model=PredictionListResponse)
 def district_predictions(
     disease: str,
@@ -70,14 +81,6 @@ def district_predictions(
             ),
         )
     return PredictionListResponse(count=len(predictions), predictions=predictions)
-
-
-@router.get("/id/{prediction_id}", response_model=PredictionResponse)
-def prediction_by_id(prediction_id: str) -> PredictionResponse:
-    prediction = get_cache().get_prediction(prediction_id)
-    if prediction is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown prediction_id")
-    return PredictionResponse(prediction=prediction)
 
 
 @router.post("/run", response_model=ForecastRunResponse)

@@ -111,7 +111,13 @@ class CDRMobilityAdapter(BaseAdapter):
                 matrix = matrix.reindex(
                     index=self.region.district_names, columns=self.region.district_names
                 ).fillna(0.0)
-                np.fill_diagonal(matrix.values, 0.0)
+                # Zero the diagonal without writing through `.values`: pandas
+                # hands back a read-only view under copy-on-write, and even
+                # before that a mixed-dtype frame returned a *copy*, so the
+                # in-place fill either raised or silently did nothing.
+                flows = matrix.to_numpy(dtype=float, copy=True)
+                np.fill_diagonal(flows, 0.0)
+                matrix = pd.DataFrame(flows, index=matrix.index, columns=matrix.columns)
                 totals = matrix.sum(axis=1).replace(0, 1.0)
                 return matrix.div(totals, axis=0)
         if model == "radiation":

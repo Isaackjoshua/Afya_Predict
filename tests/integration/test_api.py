@@ -252,3 +252,206 @@ def test_api_key_is_enforced_when_configured(monkeypatch):
         assert guarded.get(
             "/predictions", headers={"X-API-Key": "secret-token"}
         ).status_code == 200
+
+
+# ====================================================================
+# Served routes against a POPULATED cache
+# ====================================================================
+# Every prediction test above is conditional on the cache having content, so on
+# a fresh node they assert an empty-response shape and the route bodies never
+# execute. That is precisely the blind spot that let three bugs reach a running
+# stack: predictions keyed by display name (so every `?disease=` filter returned
+# nothing), the per-district route 404ing, and /explain attributing every SHAP
+# contribution to an "unknown" source. The fixture below seeds real forecasts so
+# those paths are exercised rather than skipped.
+
+
+@pytest.fixture(scope="module")
+def seeded(panel, small_region, tmp_path_factory):
+    """Real trained forecasts for two diseases, wired into the API's cache.
+
+    The modules handed to the routes are *reloaded from disk* with no feature
+    matrix, which is the state a served API is actually in: weights loaded, the
+    feature pipeline never built.
+    """
+    import importlib
+
+    from offline.local_cache import LocalCache
+    from src.models.registry import build_module
+
+    workdir = tmp_path_factory.mktemp("api-seed")
+    cache = LocalCache(workdir / "afya.sqlite")
+    served: dict = {}
+
+    for slug in ("malaria", "cholera"):
+        module = build_module(slug, region=small_region)
+        matrix = module.build_feature_matrix(panel)
+        module.train(matrix)
+        saved_to = module.save(workdir / f"{slug}.pkl")
+
+        predictions = []
+        for district in matrix.districts[:3]:
+            predictions.extend(module.predict(matrix, district, panel=panel))
+        assert cache.save_predictions(predictions) == len(predictions)
+        cache.save_alerts(module.detect_outbreak(predictions))
+
+        reloaded = build_module(slug, region=small_region)
+        assert reloaded.load(saved_to)
+        served[slug] = reloaded
+
+    from src.api import dependencies
+
+    real_get_module = dependencies.get_module
+
+    def fake_get_module(slug: str):
+        return served.get(slug) or real_get_module(slug)
+
+    targets = [
+        "src.api.dependencies",
+        "src.api.routes.predictions",
+        "src.api.routes.alerts",
+        "src.api.routes.explainability",
+        "src.api.routes.interventions",
+        "src.api.routes.admin",
+    ]
+    with pytest.MonkeyPatch.context() as mp:
+        for name in targets:
+            module_obj = importlib.import_module(name)
+            if hasattr(module_obj, "get_cache"):
+                mp.setattr(module_obj, "get_cache", lambda cache=cache: cache)
+            if hasattr(module_obj, "get_module"):
+                mp.setattr(module_obj, "get_module", fake_get_module)
+        yield cache
+
+
+def test_disease_filter_returns_only_that_disease(client, seeded):
+    """The bug: predictions were stored under the display name, so this was empty.
+
+    The unfiltered listing looked perfectly healthy throughout, which is why
+    nothing caught it until the stack was queried over HTTP.
+    """
+    unfiltered = client.get("/predictions", params={"limit": 1000}).json()
+    assert unfiltered["count"] > 0
+
+    seen = set()
+    for slug in ("malaria", "cholera"):
+        payload = client.get("/predictions", params={"disease": slug, "limit": 1000}).json()
+        assert payload["count"] > 0, f"?disease={slug} returned nothing"
+        assert {p["disease"] for p in payload["predictions"]} == {slug}
+        seen.update(p["prediction_id"] for p in payload["predictions"])
+
+    # The per-disease slices must account for the whole cache, not a subset.
+    assert seen == {p["prediction_id"] for p in unfiltered["predictions"]}
+
+
+def test_served_predictions_carry_both_slug_and_display_name(client, seeded):
+    """`disease` is what callers filter on; `disease_name` is what people read."""
+    from src.core.config_loader import load_disease_config
+
+    payload = client.get("/predictions", params={"disease": "malaria", "limit": 5}).json()
+    for prediction in payload["predictions"]:
+        assert prediction["disease"] == "malaria"
+        assert prediction["disease_name"] == load_disease_config("malaria").name
+        assert " " not in prediction["disease"]
+
+
+def test_per_district_route_serves_a_forecast(client, seeded):
+    """The bug: this 404'd for every district because the slug never matched."""
+    listing = client.get("/predictions", params={"disease": "malaria", "limit": 1}).json()
+    district = listing["predictions"][0]["district"]
+
+    response = client.get(f"/predictions/malaria/{district}")
+    assert response.status_code == 200, response.json()
+    payload = response.json()
+    assert payload["count"] > 0
+    assert {p["district"] for p in payload["predictions"]} == {district}
+
+
+def test_prediction_by_id_round_trips(client, seeded):
+    """The bug: this route was unreachable.
+
+    `/{disease}/{district}` is declared in the same router and Starlette matches
+    in order, so every by-id lookup was handled by `district_predictions` with
+    disease="id" and rejected as an unknown district. It still answered 404, so
+    a test that only asserted the status code would have passed against it —
+    hence the assertion on *why* an unknown id is refused.
+    """
+    listing = client.get("/predictions", params={"limit": 1}).json()
+    prediction_id = listing["predictions"][0]["prediction_id"]
+
+    payload = client.get(f"/predictions/id/{prediction_id}").json()
+    assert payload["prediction"]["prediction_id"] == prediction_id
+    assert payload["prediction"]["natural_language_explanation"]
+
+    missing = client.get("/predictions/id/does-not-exist")
+    assert missing.status_code == 404
+    assert missing.json()["detail"] == "Unknown prediction_id", (
+        "the by-id route is being shadowed by /{disease}/{district} again"
+    )
+
+
+def test_national_map_carries_coordinates_and_risk(client, seeded):
+    payload = client.get("/predictions/malaria/map/national").json()
+    assert payload["disease"] == "malaria"
+    assert payload["districts"]
+    for entry in payload["districts"]:
+        assert entry["lat"] is not None and entry["lon"] is not None
+        assert entry["risk_level"] in ("low", "medium", "high", "critical")
+        assert 0.0 <= entry["risk_score"] <= 1.0
+    # One row per district, newest week only.
+    names = [e["district"] for e in payload["districts"]]
+    assert len(names) == len(set(names))
+
+
+def test_explanation_attributes_contributions_to_real_sources(client, seeded):
+    """The bug: /explain reported every contribution as coming from "unknown".
+
+    The feature -> source map lived only on an in-memory FeatureMatrix, and a
+    served API loads weights without ever building one — so the fusion evidence
+    (shortcoming #2) was silently empty in production while the endpoint still
+    returned 200.
+    """
+    listing = client.get("/predictions", params={"disease": "malaria", "limit": 1}).json()
+    prediction_id = listing["predictions"][0]["prediction_id"]
+
+    payload = client.get(f"/explain/{prediction_id}").json()
+    assert payload["natural_language_explanation"]
+    assert payload["shap_values"]
+
+    contributions = payload["source_contributions"]
+    assert contributions, "no source attribution at all"
+    named = [c for c in contributions if c["source"] != "unknown"]
+    assert len(named) >= 3, f"expected several real sources, got {contributions}"
+
+    unknown_share = sum(c["share"] for c in contributions if c["source"] == "unknown")
+    assert unknown_share < 0.5, f"most contribution is unattributed: {contributions}"
+    assert abs(sum(c["share"] for c in contributions) - 1.0) < 1e-3
+
+
+def test_waterfall_is_ordered_and_complete(client, seeded):
+    listing = client.get("/predictions", params={"limit": 1}).json()
+    prediction_id = listing["predictions"][0]["prediction_id"]
+
+    payload = client.get(f"/explain/{prediction_id}/waterfall", params={"top_n": 5}).json()
+    steps = payload["steps"]
+    assert steps
+    ranked = [abs(s["contribution"]) for s in steps if not s["feature"].endswith("other features")]
+    assert ranked == sorted(ranked, reverse=True)
+    for step in steps:
+        assert step["direction"] in ("increases", "decreases")
+
+
+def test_alerts_filter_by_slug(client, seeded):
+    """Alerts had the same display-name defect, and are read by people."""
+    payload = client.get("/alerts", params={"days": 365, "limit": 500}).json()
+    if payload["count"] == 0:
+        pytest.skip("the seeded panel produced no alerts")
+
+    slugs = {a["disease"] for a in payload["alerts"]}
+    assert slugs <= {"malaria", "cholera"}
+    for slug in slugs:
+        filtered = client.get(
+            "/alerts", params={"disease": slug, "days": 365, "limit": 500}
+        ).json()
+        assert filtered["count"] > 0, f"?disease={slug} returned no alerts"
+        assert {a["disease"] for a in filtered["alerts"]} == {slug}

@@ -293,19 +293,38 @@ def criterion_14():
 @check(15, "Test coverage >= 80%")
 def criterion_15():
     import subprocess
+    from datetime import datetime, timedelta
 
     coverage_file = REPO_ROOT / ".coverage"
     if not coverage_file.exists():
         return SKIP, "no .coverage file — run: coverage run -m pytest"
+
+    measured_at = datetime.fromtimestamp(coverage_file.stat().st_mtime)
+    stamp = measured_at.strftime("%Y-%m-%d %H:%M")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "coverage", "report", "--format=total"],
+        cwd=REPO_ROOT, capture_output=True, text=True, timeout=120,
+    )
     try:
-        result = subprocess.run(
-            [sys.executable, "-m", "coverage", "report", "--format=total"],
-            cwd=REPO_ROOT, capture_output=True, text=True, timeout=120,
-        )
         total = float(result.stdout.strip())
-    except Exception as exc:  # noqa: BLE001
-        return SKIP, f"could not read coverage: {exc}"
-    return (PASS if total >= 80 else FAIL), f"{total:.0f}% line coverage"
+    except ValueError:
+        # A .coverage recorded in a different checkout records absolute paths
+        # that do not exist here, so `coverage report` fails outright. Say that
+        # plainly: silently skipping made a stale, unusable file look the same
+        # as an environment that simply had not been measured yet.
+        detail = (result.stderr or result.stdout).strip().splitlines()
+        reason = detail[0][:160] if detail else "no total reported"
+        return FAIL, (
+            f".coverage from {stamp} is unreadable in this checkout ({reason}); "
+            "delete it and re-run: coverage run -m pytest tests/"
+        )
+
+    verdict = PASS if total >= 80 else FAIL
+    note = f"{total:.0f}% line coverage (measured {stamp})"
+    if measured_at < datetime.now() - timedelta(days=1):
+        note += " — over a day old, re-measure before trusting it"
+    return verdict, note
 
 
 CHECKS = [

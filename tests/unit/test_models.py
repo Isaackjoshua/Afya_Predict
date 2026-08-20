@@ -316,3 +316,53 @@ def test_provenance_survives_a_save_and_reload(panel, small_region, tmp_path):
     assert len(sources - {"unknown", None}) >= 3, (
         f"expected several contributing sources, got {sources}"
     )
+
+
+@pytest.mark.parametrize("slug", sorted(list_modules()))
+def test_every_registered_module_trains_and_predicts(slug, panel, small_region):
+    """Run *all five*, not a representative two.
+
+    The respiratory module was completely unusable for weeks: it derived its
+    slug from the config's display name ("Acute Respiratory Infection"), so its
+    target column never resolved. Four of the five diseases happen to have a
+    display name that matches their filename, so every test passed. Seeding all
+    five in one run is what exposed it — this test is that run.
+    """
+    from src.core.config_loader import load_disease_config
+
+    module = build_module(slug, region=small_region)
+    assert module.slug == slug, (
+        f"{slug}: module reports slug {module.slug!r} — a module whose slug is "
+        f"derived from its display name cannot resolve its target column"
+    )
+
+    matrix = module.build_feature_matrix(panel)
+    assert matrix.target_column, f"{slug}: target column did not resolve"
+    assert matrix.y.notna().any(), (
+        f"{slug}: target column {matrix.target_column!r} resolved to no observations"
+    )
+    module.train(matrix)
+    assert module.models, f"{slug}: training produced no model"
+
+    results = module.predict(matrix, matrix.districts[0], panel=panel)
+    assert results, f"{slug}: predicted nothing"
+    for result in results:
+        assert result.disease == slug
+        assert result.disease_name == load_disease_config(slug).name
+        # Critical rule #2: a prediction is never served without its explanation.
+        assert result.natural_language_explanation
+        assert result.top_drivers
+        assert result.confidence_interval_lower <= result.predicted_cases
+        assert result.predicted_cases <= result.confidence_interval_upper
+
+    for alert in module.detect_outbreak(results):
+        assert alert.disease == slug
+        assert alert.display_name == load_disease_config(slug).name
+        recommendations = module.generate_recommendations(alert)
+        # No disease YAML defines actions at "low" — that level means "nothing
+        # to do yet", so an empty list is the correct answer there. Anything
+        # the system actually raises must come with something to do about it.
+        if alert.risk_level != "low":
+            assert recommendations, f"{slug}: {alert.risk_level} alert with no actions"
+        for recommendation in recommendations:
+            assert recommendation.action and recommendation.responsible
