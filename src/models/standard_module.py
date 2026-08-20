@@ -154,7 +154,8 @@ class StandardDiseaseModule(BaseDiseaseModule):
 
             result = PredictionResult(
                 prediction_id=self.new_prediction_id(),
-                disease=self.config.name,
+                disease=self.slug,
+                disease_name=self.config.name,
                 district=district,
                 region=district_meta.region,
                 forecast_date=date.today(),
@@ -325,6 +326,7 @@ class StandardDiseaseModule(BaseDiseaseModule):
         return Alert(
             alert_id="provisional",
             disease=prediction.disease,
+            disease_name=prediction.disease_name or self.config.name,
             district=prediction.district,
             region=prediction.region,
             issued_at=datetime.utcnow(),

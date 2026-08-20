@@ -35,6 +35,7 @@ def build_alert(
     return Alert(
         alert_id=str(uuid.uuid4()),
         disease=prediction.disease,
+        disease_name=prediction.disease_name,
         district=prediction.district,
         region=prediction.region,
         issued_at=datetime.utcnow(),

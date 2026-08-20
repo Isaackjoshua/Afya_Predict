@@ -118,6 +118,12 @@ class BaseDiseaseModule(abc.ABC):
         self.models: Dict[str, TrainedModel] = {}   # scope -> model
         self.feature_matrix: Optional[FeatureMatrix] = None
         self.trained_at: Optional[datetime] = None
+        #: feature -> {proxy, source, lag_weeks, mechanism}. Persisted with the
+        #: model so a served API can roll SHAP values up to their data source
+        #: without rebuilding the feature pipeline. Without it, /explain reports
+        #: every contribution as coming from an "unknown" source, which is
+        #: precisely the fusion evidence shortcoming #2 exists to surface.
+        self.provenance: Dict[str, dict] = {}
 
     # ------------------------------------------------------------------
     # Required interface
@@ -286,6 +292,7 @@ class BaseDiseaseModule(abc.ABC):
         never pretend a local fit exists when it does not.
         """
         self.feature_matrix = matrix
+        self.provenance = dict(matrix.provenance)
         districts = list(districts or matrix.districts)
         models: Dict[str, TrainedModel] = {}
 
@@ -423,8 +430,15 @@ class BaseDiseaseModule(abc.ABC):
         target = Path(path or self.artifact_dir() / "model.pkl")
         target.parent.mkdir(parents=True, exist_ok=True)
         with open(target, "wb") as handle:
-            pickle.dump({"slug": self.slug, "models": self.models,
-                         "trained_at": self.trained_at}, handle)
+            pickle.dump(
+                {
+                    "slug": self.slug,
+                    "models": self.models,
+                    "trained_at": self.trained_at,
+                    "provenance": self.provenance,
+                },
+                handle,
+            )
         metadata = {
             "disease": self.config.name,
             "slug": self.slug,
@@ -446,6 +460,7 @@ class BaseDiseaseModule(abc.ABC):
             payload = pickle.load(handle)
         self.models = payload.get("models", {})
         self.trained_at = payload.get("trained_at")
+        self.provenance = payload.get("provenance", {}) or {}
         return bool(self.models)
 
     # -- misc --------------------------------------------------------------

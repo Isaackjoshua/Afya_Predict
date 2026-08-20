@@ -20,7 +20,8 @@ def cache(tmp_path):
 
 def _prediction(district="Kinondoni", week="2026-W10", **overrides) -> PredictionResult:
     base = dict(
-        prediction_id=f"p-{district}-{week}", disease="Malaria", district=district,
+        prediction_id=f"p-{district}-{week}", disease="malaria",
+        disease_name="Malaria", district=district,
         region="Dar es Salaam", forecast_date=date(2026, 1, 5), target_week=week,
         predicted_cases=1200.0, confidence_interval_lower=900.0,
         confidence_interval_upper=1600.0, risk_level="high", risk_score=0.8,
@@ -32,7 +33,8 @@ def _prediction(district="Kinondoni", week="2026-W10", **overrides) -> Predictio
 
 def _alert(alert_id="a1", **overrides) -> Alert:
     base = dict(
-        alert_id=alert_id, disease="Malaria", district="Kinondoni",
+        alert_id=alert_id, disease="malaria", disease_name="Malaria",
+        district="Kinondoni",
         region="Dar es Salaam", issued_at=datetime.utcnow(), target_week="2026-W10",
         risk_level="high", risk_score=0.8, predicted_cases=1200.0,
         predicted_incidence_per_1000=1.0, threshold_crossed=5.0,
@@ -277,3 +279,28 @@ def test_sync_report_serialises(cache):
     payload = report.to_dict()
     assert payload["alerts_pushed"] == 2
     assert payload["ok"] is True
+
+def test_cache_filters_by_slug_end_to_end(cache):
+    """The round trip that was broken: write with a slug, read with a slug."""
+    cache.save_predictions([
+        _prediction(district="Kinondoni", week="2026-W10"),
+        _prediction(district="Ilala", week="2026-W10",
+                    disease="respiratory", disease_name="Acute Respiratory Infection"),
+    ])
+    assert len(cache.latest_predictions(disease="malaria")) == 1
+    assert len(cache.latest_predictions(disease="respiratory")) == 1
+    # The display name is not an identifier and must not match.
+    assert cache.latest_predictions(disease="Acute Respiratory Infection") == []
+
+    stored = cache.latest_predictions(disease="respiratory")[0]
+    assert stored.disease_name == "Acute Respiratory Infection"
+    assert stored.display_name == "Acute Respiratory Infection"
+
+
+def test_alert_filters_by_slug(cache):
+    cache.save_alerts([
+        _alert("a1", disease="malaria", disease_name="Malaria"),
+        _alert("a2", disease="respiratory", disease_name="Acute Respiratory Infection"),
+    ])
+    assert len(cache.get_alerts(disease="respiratory")) == 1
+    assert cache.get_alerts(disease="Malaria") == []

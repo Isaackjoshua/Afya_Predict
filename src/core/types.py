@@ -259,7 +259,13 @@ class PredictionResult(BaseModel):
     """The full, explainable, actionable output of a single forecast."""
 
     prediction_id: str
+    #: The disease SLUG (e.g. "respiratory"), matching the config filename and
+    #: the registry key. This is what every API route, dashboard filter and
+    #: cache query keys on. Use `disease_name` for anything a human reads:
+    #: storing "Acute Respiratory Infection" here silently broke every
+    #: disease-filtered query.
     disease: str
+    disease_name: str = ""
     district: str
     region: str
     forecast_date: date
@@ -291,6 +297,11 @@ class PredictionResult(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     @property
+    def display_name(self) -> str:
+        """Human-facing disease name, falling back to the slug."""
+        return self.disease_name or self.disease.replace("_", " ").title()
+
+    @property
     def incidence_per_1000(self) -> Optional[float]:
         return getattr(self, "_incidence", None)
 
@@ -305,7 +316,9 @@ class Alert(BaseModel):
     """A dispatched, actionable warning derived from one or more predictions."""
 
     alert_id: str
+    #: Disease slug — see the note on `PredictionResult.disease`.
     disease: str
+    disease_name: str = ""
     district: str
     region: str
     issued_at: datetime
@@ -330,11 +343,21 @@ class Alert(BaseModel):
     acknowledged_by: Optional[str] = None
     delivery_status: Dict[str, str] = Field(default_factory=dict)
 
+    @property
+    def display_name(self) -> str:
+        """Human-facing disease name, falling back to the slug.
+
+        Alerts are read by people - in an email, an SMS, a DHIS2 message - so
+        every rendered surface uses this rather than the slug.
+        """
+        return self.disease_name or self.disease.replace("_", " ").title()
+
 
 class Intervention(BaseModel):
     """A logged response action, used to close the feedback loop (#15)."""
 
     intervention_id: str
+    #: Disease slug — see the note on `PredictionResult.disease`.
     disease: str
     district: str
     alert_id: Optional[str] = None
@@ -347,3 +370,7 @@ class Intervention(BaseModel):
     notes: str = ""
     logged_by: str = "system"
     logged_at: datetime = Field(default_factory=datetime.utcnow)
+
+    @property
+    def display_name(self) -> str:
+        return self.disease.replace("_", " ").title()

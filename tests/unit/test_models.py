@@ -256,3 +256,63 @@ def test_transfer_plan_splits_local_from_borrowing(panel, small_region, malaria_
     assert not plan.local
     assert set(plan.borrowing) == set(matrix.districts)
     assert not plan.summary().empty
+
+def test_predictions_are_keyed_by_slug_not_display_name(panel, small_region):
+    """Every API route, dashboard filter and cache query keys on the slug.
+
+    Storing the display name here meant `?disease=malaria` returned nothing,
+    `/predictions/malaria/Kinondoni` 404'd, and every dashboard page reported
+    "no cached forecasts" — while the unfiltered listing looked perfectly
+    healthy. The tests at the time asserted response *shape*, so none of them
+    noticed.
+    """
+    from src.core.config_loader import load_disease_config
+
+    for slug in ("malaria", "respiratory"):
+        module = build_module(slug, region=small_region)
+        matrix = module.build_feature_matrix(panel)
+        module.train(matrix)
+        results = module.predict(matrix, matrix.districts[0], panel=panel)
+        assert results
+        prediction = results[-1]
+
+        assert prediction.disease == slug
+        assert prediction.disease_name == load_disease_config(slug).name
+        # The display name must still be available for anything a human reads.
+        assert prediction.display_name == prediction.disease_name
+
+        alerts = module.detect_outbreak(results)
+        for alert in alerts:
+            assert alert.disease == slug
+            assert alert.display_name == prediction.disease_name
+
+
+def test_respiratory_display_name_differs_from_its_slug(small_region):
+    """The case that makes the distinction load-bearing rather than cosmetic."""
+    module = build_module("respiratory", region=small_region)
+    assert module.slug == "respiratory"
+    assert module.config.name == "Acute Respiratory Infection"
+
+
+def test_provenance_survives_a_save_and_reload(panel, small_region, tmp_path):
+    """A served API loads weights but never builds a feature matrix.
+
+    Relying on the in-memory provenance map meant /explain attributed every
+    SHAP contribution to an "unknown" source once the model was loaded from
+    disk — which is exactly the fusion evidence shortcoming #2 exists to show.
+    """
+    module = build_module("malaria", region=small_region)
+    matrix = module.build_feature_matrix(panel)
+    module.train(matrix)
+    assert module.provenance, "training must capture the provenance map"
+
+    path = module.save(tmp_path / "model.pkl")
+    reloaded = build_module("malaria", region=small_region)
+    assert reloaded.load(path)
+    assert reloaded.feature_matrix is None          # never built one
+    assert reloaded.provenance == module.provenance
+
+    sources = {record.get("source") for record in reloaded.provenance.values()}
+    assert len(sources - {"unknown", None}) >= 3, (
+        f"expected several contributing sources, got {sources}"
+    )

@@ -30,8 +30,15 @@ def explain(prediction_id: str) -> ExplanationResponse:
     # see the fusion working rather than a wall of engineered column names.
     contributions: dict = {}
     try:
-        module = get_module(prediction.disease.lower().replace(" ", "_"))
-        provenance = module.feature_matrix.provenance if module.feature_matrix else {}
+        # `prediction.disease` is already the registry slug; deriving one from a
+        # display name here was what produced "acute_respiratory_infection".
+        module = get_module(prediction.disease)
+        # Prefer the map persisted with the model: a served API has loaded
+        # weights but never built a feature matrix, so relying on the in-memory
+        # one attributed every contribution to an "unknown" source.
+        provenance = module.provenance or (
+            module.feature_matrix.provenance if module.feature_matrix else {}
+        )
     except Exception:  # noqa: BLE001 - explanation must not depend on a live model
         provenance = {}
 

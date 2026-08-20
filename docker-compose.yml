@@ -134,17 +134,27 @@ services:
 
   # One-shot: populate a fresh volume with history, models and forecasts.
   #   docker compose run --rm seed
+  #   docker compose run --rm seed --districts Kinondoni Ilala --forecast-weeks 6
+  #
+  # The script goes in `entrypoint`, not `command`, on purpose: `docker compose
+  # run` REPLACES command but only appends to entrypoint. With the script in
+  # `command`, passing any flag substituted it away and the container died with
+  # `exec --districts failed: No such file or directory`.
   seed:
     <<: *app
-    command: ["python", "scripts/seed_historical_data.py"]
+    entrypoint: ["/usr/bin/tini", "--", "python", "scripts/seed_historical_data.py"]
+    command: []
     restart: "no"
     profiles: ["tools"]
 
   # One-shot: walk-forward backtest against the acceptance criteria.
-  #   docker compose run --rm backtest
+  #   docker compose run --rm backtest              (defaults to --all)
+  #   docker compose run --rm backtest --disease cholera --max-folds 2
+  # Same entrypoint/command split as `seed`, for the same reason.
   backtest:
     <<: *app
-    command: ["python", "scripts/run_backtest.py", "--all"]
+    entrypoint: ["/usr/bin/tini", "--", "python", "scripts/run_backtest.py"]
+    command: ["--all"]
     restart: "no"
     profiles: ["tools"]
 

@@ -146,7 +146,7 @@ class NotificationService:
         log.warning(
             "[%s] %s in %s (%s) week %s: %.0f cases (%.2f/1000). %s",
             alert.risk_level.upper(),
-            alert.disease,
+            alert.display_name,
             alert.district,
             alert.region,
             alert.target_week,
@@ -171,7 +171,7 @@ class NotificationService:
 
         message = EmailMessage()
         message["Subject"] = (
-            f"[AFYA-PREDICT {alert.risk_level.upper()}] {alert.disease} — "
+            f"[AFYA-PREDICT {alert.risk_level.upper()}] {alert.display_name} — "
             f"{alert.district}, week {alert.target_week}"
         )
         message["From"] = self.settings.alert_email_from
@@ -233,7 +233,7 @@ class NotificationService:
         base = self.settings.dhis2_base_url.rstrip("/")
         payload = {
             "subject": (
-                f"AFYA-PREDICT {alert.risk_level.upper()}: {alert.disease} — {alert.district}"
+                f"AFYA-PREDICT {alert.risk_level.upper()}: {alert.display_name} — {alert.district}"
             ),
             "text": self.render_email(alert),
         }
@@ -251,7 +251,7 @@ class NotificationService:
         from src.explainability.natural_language import sms_summary
 
         return sms_summary(
-            disease=alert.disease,
+            disease=alert.display_name,
             district=alert.district,
             risk_level=alert.risk_level,
             predicted_cases=alert.predicted_cases,
@@ -265,7 +265,7 @@ class NotificationService:
         lines = [
             f"AFYA-PREDICT {alert.risk_level.upper()} ALERT",
             "=" * 60,
-            f"Disease        : {alert.disease}",
+            f"Disease        : {alert.display_name}",
             f"District       : {alert.district} ({alert.region})",
             f"Target week    : {alert.target_week}  (lead time {alert.lead_time_weeks} weeks)",
             f"Forecast       : {alert.predicted_cases:,.0f} cases "

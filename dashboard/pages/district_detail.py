@@ -144,8 +144,11 @@ def _source_contributions(detail: dict) -> list:
     try:
         from src.models.registry import build_module
 
-        module = build_module(detail.get("disease", "").lower().replace(" ", "_"))
-        provenance = module.feature_matrix.provenance if module.feature_matrix else {}
+        module = build_module(detail.get("disease", ""))   # already a slug
+        module.load()                                      # restores provenance
+        provenance = module.provenance or (
+            module.feature_matrix.provenance if module.feature_matrix else {}
+        )
     except Exception:  # noqa: BLE001
         provenance = {}
 
