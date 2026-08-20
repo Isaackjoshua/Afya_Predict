@@ -79,3 +79,43 @@ def test_alert_rules_load():
     rules = load_alert_rules()
     assert rules["risk_levels"] == ["low", "medium", "high", "critical"]
     assert rules["delivery"]["by_level"]["critical"]
+
+def test_slug_comes_from_the_filename_not_the_display_name(all_disease_configs):
+    """A disease's identity is its config filename.
+
+    "Acute Respiratory Infection" lives in `respiratory.yaml`, and its
+    surveillance column is `cases_respiratory`. Deriving the slug from the
+    display name produced `cases_acute_respiratory_infection`, which exists
+    nowhere — the feature builder raised KeyError and the whole module was
+    unusable. It went unnoticed because every other shipped disease happens to
+    have a display name matching its filename.
+    """
+    from src.data_ingestion.adapters.dhis2_surveillance import CASE_VARIABLES
+
+    respiratory = all_disease_configs["respiratory"]
+    assert respiratory.name == "Acute Respiratory Infection"
+    assert respiratory.slug == "respiratory"
+
+    for slug, config in all_disease_configs.items():
+        assert config.slug == slug, f"{slug}: slug is {config.slug}"
+        assert config.slug in CASE_VARIABLES, (
+            f"{slug} has no surveillance column; add it to CASE_VARIABLES in "
+            "src/data_ingestion/adapters/dhis2_surveillance.py"
+        )
+
+
+def test_an_in_memory_config_still_gets_a_slug():
+    """Scaffolding and tests build configs without a file behind them."""
+    from src.core.types import DiseaseConfig
+
+    config = DiseaseConfig(name="Rift Valley Fever", code="RVF")
+    assert config.slug == "rift_valley_fever"
+
+
+def test_every_disease_target_column_resolves(all_disease_configs, small_region):
+    """The failure mode this pins broke an entire disease module silently."""
+    from src.feature_engineering.builder import FeatureBuilder
+
+    for slug, config in all_disease_configs.items():
+        builder = FeatureBuilder(config, small_region)
+        assert builder.target_column == f"cases_{slug}", slug

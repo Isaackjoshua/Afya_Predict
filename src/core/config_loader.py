@@ -41,7 +41,9 @@ def load_disease_config(slug: str, config_dir: Optional[Path] = None) -> Disease
         available = ", ".join(list_disease_configs(directory)) or "none"
         raise FileNotFoundError(f"No disease config {path}. Available: {available}")
     raw = _read_yaml(path)
-    body = raw.get("disease", raw)
+    body = dict(raw.get("disease", raw))
+    # The filename is the disease's identity, not its display name.
+    body.setdefault("config_slug", slug)
     return DiseaseConfig.model_validate(body)
 
 

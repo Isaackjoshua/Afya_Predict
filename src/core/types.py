@@ -124,6 +124,11 @@ class AlertThresholds(BaseModel):
 class DiseaseConfig(BaseModel):
     """Parsed `config/diseases/<name>.yaml`."""
 
+    #: The config filename stem, set by the loader. This is the disease's
+    #: identity everywhere — registry key, module slug, `cases_*` column — and
+    #: it is NOT derivable from `name`: "Acute Respiratory Infection" lives in
+    #: `respiratory.yaml` and its surveillance column is `cases_respiratory`.
+    config_slug: Optional[str] = None
     name: str
     code: str
     transmission_mode: TransmissionMode = TransmissionMode.OTHER
@@ -137,7 +142,12 @@ class DiseaseConfig(BaseModel):
 
     @property
     def slug(self) -> str:
-        return self.name.lower().replace(" ", "_")
+        """The disease's canonical identifier.
+
+        Prefers the config filename, falling back to a name-derived slug only
+        for configs built in memory (tests, scaffolding).
+        """
+        return self.config_slug or self.name.lower().replace(" ", "_")
 
     @property
     def required_sources(self) -> List[str]:
