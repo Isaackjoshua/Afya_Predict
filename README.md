@@ -157,7 +157,7 @@ Last run on 4 districts over 2019–2024, 3 walk-forward folds:
 | 11 | Dashboard heatmap, district detail, SHAP waterfall | 6 pages, 4 components |
 | 12 | Offline mode caches ≥2 weeks | 4 weeks cached |
 | 13 | `add_new_disease.py` scaffolds in < 5 min | config + module + registry + notebook |
-| 14 | `docker compose` brings up the stack | compose config valid, 7 services |
+| 14 | `docker compose` brings up the stack | image builds, container boots, `/health` serves 5 diseases and 110 districts |
 | 15 | Test coverage ≥ 80% | **81%** |
 
 Numbers 3, 5 and 6 come from synthetic data, so they demonstrate that the

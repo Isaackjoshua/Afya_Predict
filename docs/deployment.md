@@ -17,8 +17,10 @@ cp .env.example .env          # optional — the stack runs without credentials
 docker compose up --build
 ```
 
-> **The build needs a working link.** Roughly 40 MB of wheels are fetched on
-> first build (more with `EXTRAS=ml`). `PIP_RETRIES`/`PIP_TIMEOUT` are set
+> **The build needs a working link.** The default image is roughly 1.2 GB built
+> (Streamlit pulls PyArrow, and SciPy/pandas/NumPy are not small). Build with
+> `--build-arg EXTRAS=` for an API-only image without the dashboard stack, or
+> `EXTRAS=ml,dashboard` for the faster model backends. `PIP_RETRIES`/`PIP_TIMEOUT` are set
 > generously in the Dockerfile because the deployments this platform targets
 > live on links that drop mid-download, but a link that cannot complete a
 > 3 MB wheel at all will surface as `ResolutionImpossible` rather than as a
@@ -173,6 +175,35 @@ Training dominates CPU; serving is cache reads and is comfortably inside the
 2-second budget on modest hardware. Reduce cost by lowering
 `--forecast-weeks`, retraining monthly rather than weekly, and pruning the cache
 (`POST /admin/cache/prune`).
+
+## What the image actually contains
+
+Verified on a fresh build of the default target:
+
+```
+$ docker build -t afya-predict .          # target: runtime (the light image)
+$ docker run -d -p 8000:8000 afya-predict
+$ curl -s localhost:8000/health
+{"status":"degraded", "diseases":["cholera","hiv","malaria","respiratory","tuberculosis"],
+ "districts":110, "backends":{"default_resolved":"numpy_gbm", "xgboost":false, ...},
+ "cache":{"predictions":0, "offline_ready":false},
+ "warnings":["fewer than 2 weeks of forecasts cached; this node is not yet ready to run offline",
+             "no XGBoost/LightGBM/scikit-learn installed; using the bundled NumPy gradient booster ..."]}
+```
+
+Three things worth reading in that response:
+
+- **All five diseases and 110 districts load from the packaged YAML**, so the
+  configuration ships with the image rather than needing a mounted volume.
+- **`default_resolved` is `numpy_gbm`.** The default image has no ML wheels, and
+  the platform silently picked its bundled backend. Add `EXTRAS=ml` and the same
+  endpoint will report `xgboost`.
+- **`status` is `degraded`, not `ok`,** on a fresh volume — with warnings naming
+  exactly what is missing. That is the intended behaviour: the service is up, the
+  cache is empty, and it says so instead of implying it has forecasts to serve.
+  Run `docker compose run --rm seed` and it becomes `ok`.
+
+The container runs as a non-root user (`uid=10001 afya`) with `tini` as PID 1.
 
 ## Health and monitoring
 
