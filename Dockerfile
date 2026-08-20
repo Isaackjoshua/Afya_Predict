@@ -86,3 +86,10 @@ RUN apt-get update \
     && pip install ".[geo]" \
     && apt-get purge -y g++ && apt-get autoremove -y
 USER afya
+
+
+# --- default target ---------------------------------------------------------
+# Docker builds the LAST stage when none is named, so this alias has to come
+# after `geo`. Without it, a plain `docker build .` (and `docker compose build`)
+# would silently produce the ~400 MB GDAL image instead of the light one.
+FROM base AS runtime

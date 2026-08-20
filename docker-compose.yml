@@ -20,6 +20,8 @@ x-app: &app
   build:
     context: .
     dockerfile: Dockerfile
+    # Explicit, though it is also the default: the light image, not the GDAL one.
+    target: runtime
   image: afya-predict:latest
   restart: unless-stopped
   env_file:
