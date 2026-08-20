@@ -32,6 +32,12 @@ TIMESCALE_SQL = """
 -- fast once several years of district x week history accumulate.
 CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 
+-- `week_start` must be part of the primary key: TimescaleDB refuses to create a
+-- hypertable when a unique index omits the partitioning column. Without it,
+-- create_hypertable() fails and the whole schema silently falls back to plain
+-- tables - which is exactly what happened, unnoticed, until a real deployment.
+-- It does not weaken the constraint: `week_start` is functionally determined by
+-- `week`, so (disease, district, week) is still effectively unique.
 CREATE TABLE IF NOT EXISTS observations (
     disease            TEXT        NOT NULL,
     district           TEXT        NOT NULL,
@@ -41,7 +47,7 @@ CREATE TABLE IF NOT EXISTS observations (
     incidence_per_1000 DOUBLE PRECISION,
     quality            DOUBLE PRECISION DEFAULT 1.0,
     source             TEXT,
-    PRIMARY KEY (disease, district, week)
+    PRIMARY KEY (disease, district, week, week_start)
 );
 
 CREATE TABLE IF NOT EXISTS driver_values (
@@ -53,7 +59,7 @@ CREATE TABLE IF NOT EXISTS driver_values (
     value      DOUBLE PRECISION,
     quality    DOUBLE PRECISION DEFAULT 1.0,
     imputed    BOOLEAN          DEFAULT FALSE,
-    PRIMARY KEY (source, variable, district, week)
+    PRIMARY KEY (source, variable, district, week, week_start)
 );
 
 CREATE TABLE IF NOT EXISTS predictions (
@@ -158,11 +164,16 @@ def setup_postgres(reset: bool) -> int:
                               "driver_values", "observations"):
                     cursor.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
                 print("  dropped existing tables")
+            hypertables = True
             try:
                 cursor.execute(TIMESCALE_SQL)
             except Exception as exc:  # noqa: BLE001
-                # TimescaleDB is an optimisation, not a requirement.
-                print(f"  TimescaleDB unavailable ({exc}); creating plain tables instead")
+                # TimescaleDB is an optimisation, not a requirement - but say so
+                # loudly rather than reporting success for a degraded schema.
+                print(f"  TimescaleDB unavailable ({exc});")
+                print("  creating plain tables instead - queries will still work, but")
+                print("  time-partitioning is lost. Check that the extension is installed.")
+                hypertables = False
                 connection.rollback()
                 plain = "\n".join(
                     line for line in TIMESCALE_SQL.splitlines()
@@ -170,7 +181,19 @@ def setup_postgres(reset: bool) -> int:
                 )
                 cursor.execute(plain)
         connection.commit()
-    print("  schema created")
+
+    if hypertables:
+        with psycopg.connect(url) as connection, connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT hypertable_name FROM timescaledb_information.hypertables"
+            )
+            names = sorted(row[0] for row in cursor.fetchall())
+        print(f"  schema created with {len(names)} hypertable(s): {', '.join(names) or 'none'}")
+        if not names:
+            print("  WARNING: no hypertables exist despite the extension loading.")
+            return 1
+    else:
+        print("  schema created (plain tables)")
     return 0
 
 

@@ -38,7 +38,10 @@ WORKDIR /app
 # buildable on a poor link; `--build-arg EXTRAS=ml,dashboard` adds XGBoost,
 # LightGBM, SHAP and scikit-learn (roughly 400 MB more, mostly llvmlite) for a
 # server deployment where the faster backends are worth it.
-ARG EXTRAS=dashboard
+# `db` is included by default so `docker compose --profile full` works out of
+# the box: shipping a Postgres service the image cannot talk to is not a useful
+# default. psycopg[binary] adds only a few MB.
+ARG EXTRAS=dashboard,db
 COPY pyproject.toml README.md LICENSE ./
 RUN mkdir -p src && touch src/__init__.py \
     && pip install --upgrade pip \

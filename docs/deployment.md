@@ -49,6 +49,29 @@ Bring up the database and cache too:
 docker compose --profile full up
 ```
 
+If the host already runs Postgres or Redis, that fails with
+`failed to bind host port 0.0.0.0:5432/tcp: address already in use`. Override
+the published ports rather than stopping the local service:
+
+```bash
+DB_PORT=55432 REDIS_PORT=56379 docker compose --profile full up
+```
+
+On a production host, remove those `ports:` entries entirely — nothing outside
+the compose network needs to reach the database.
+
+Then create the central schema:
+
+```bash
+docker compose exec -e DATABASE_URL=postgresql://afya:$DB_PASSWORD@db:5432/afya_predict \
+    api python scripts/setup_database.py --postgres
+# schema created with 2 hypertable(s): driver_values, observations
+```
+
+Read that last line. If it says "plain tables" instead, TimescaleDB did not
+apply and you have lost time-partitioning — the two high-volume tables will
+still work, but national-scale history will get slow.
+
 ## Without Docker
 
 ```bash
