@@ -8,7 +8,7 @@ population, air-quality, WASH and routine health-surveillance streams onto a
 common `district × epidemiological week` grid and predicts **where** and **when**
 disease risk will rise — typically 4–12 weeks before cases reach facility reports.
 
-Built for Tanzania first, designed to scale across Africa. MIT licensed.
+Built for Tanzania first, designed to scale across Africa. MIT licensed..
 
 ---
 
